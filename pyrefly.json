@@ -1,0 +1,6 @@
+{
+  "search_paths": [
+    "backend"
+  ],
+  "python_path": "backend/.venv/bin/python"
+}

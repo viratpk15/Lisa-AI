@@ -1,0 +1,29 @@
+# Task Checklist - Sprint 5.3 Conversation Integration
+
+- [x] `[x]` Step 1: Update API Service (`frontend/src/services/api/chat.ts`)
+  - [x] Implement `sendMessageApi` using `apiClient.post<ConversationResponse>("/chat", { session_id, message })`
+  - [x] Implement session local persistence helpers (`getStoredConversations`, `saveStoredConversations`)
+- [x] `[x]` Step 2: Create React Query Custom Hooks (`frontend/src/services/queries/chat.ts`)
+  - [x] `useConversationsQuery()` - query active conversations list
+  - [x] `useSendMessageMutation()` - mutation hook sending prompts to `/chat` with optimistic updates
+  - [x] `useCreateConversationMutation()` - mutation creating new session threads
+  - [x] `useDeleteConversationMutation()` - mutation removing session threads
+  - [x] `useRenameConversationMutation()` - mutation updating session titles
+  - [x] `useTogglePinMutation()` - mutation updating session pinned status
+- [x] `[x]` Step 3: Wire Premium Workspace Page (`frontend/src/features/Workspace/WorkspacePage.tsx`)
+  - [x] Connect Sidebar to live conversation list & active selection
+  - [x] Connect MessageArea to live message history & thinking indicator
+  - [x] Connect Composer to `useSendMessageMutation`
+  - [x] Connect Header to conversation title, model, scope, export & delete
+  - [x] Add global workspace error banner handling network / server failures
+- [x] `[x]` Step 4: Verification & Build Validation
+  - [x] Execute `pnpm build` in `frontend/` (625ms)
+  - [x] Execute `pnpm lint` in `frontend/` (0 errors)
+  - [x] Verify session persistence, switching, refresh, and authentication
+- [x] `[x]` Step 5: Deliverables Documentation
+  - [x] Create `engineering_report.md`
+  - [x] Create `developer_walkthrough.md`
+  - [x] Create `architecture_diagram.md`
+  - [x] Create `conversation_flow.md`
+  - [x] Create `integration_report.md`
+  - [x] Create `task.md`

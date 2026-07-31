@@ -1,0 +1,4 @@
+exclude = ["**/.cache", "**/.git"]
+line-length = 120
+lint.select = ["E", "F", "W", "C"]
+lint.ignore = ["C901", "E501", "E402"]

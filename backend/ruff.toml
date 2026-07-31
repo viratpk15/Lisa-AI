@@ -1,0 +1,20 @@
+force-exclude = true
+
+exclude = [
+    ".venv",
+    "**/.venv/**",
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[lint]
+exclude = [
+    ".venv",
+    "**/.venv/**",
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+]
