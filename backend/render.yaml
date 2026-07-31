@@ -5,10 +5,10 @@ services:
     rootDir: backend
 
     buildCommand: |
-      uv sync
+      uv sync --frozen
 
     startCommand: |
-      python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+      uv run python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
     healthCheckPath: /health
 
