@@ -12,8 +12,11 @@ interface EnvConfig {
 
 // Perform strict assertions at runtime to catch invalid config parameters
 const validateEnv = (): EnvConfig => {
-  const rawApiUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000"
-  const apiUrl = rawApiUrl.replace("http://localhost:8000", "http://127.0.0.1:8000")
+  const rawApiUrl = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").trim()
+  let apiUrl = rawApiUrl.replace("http://localhost:8000", "http://127.0.0.1:8000")
+  if (apiUrl.endsWith("/") && apiUrl !== "/") {
+    apiUrl = apiUrl.slice(0, -1)
+  }
   const timeoutMsStr = import.meta.env.VITE_API_TIMEOUT_MS
 
   if (!apiUrl) {
@@ -23,12 +26,14 @@ const validateEnv = (): EnvConfig => {
     );
   }
 
-  try {
-    new URL(apiUrl)
-  } catch {
-    throw new Error(
-      `CRITICAL CONFIGURATION ERROR: VITE_API_URL "${apiUrl}" is not a valid absolute URL.`
-    )
+  if (apiUrl.startsWith("http://") || apiUrl.startsWith("https://")) {
+    try {
+      new URL(apiUrl)
+    } catch {
+      throw new Error(
+        `CRITICAL CONFIGURATION ERROR: VITE_API_URL "${apiUrl}" is not a valid absolute URL.`
+      )
+    }
   }
 
   const timeoutMs = timeoutMsStr ? parseInt(timeoutMsStr, 10) : 10000

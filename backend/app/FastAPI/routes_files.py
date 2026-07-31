@@ -73,7 +73,8 @@ async def upload_file(
     """Handle document/attachment upload, save to disk, connect to RAGManager, and return metadata."""
     file_bytes = await file.read()
     att_id = f"att_{uuid.uuid4().hex[:8]}"
-    filename = file.filename or "uploaded_file"
+    raw_filename = file.filename or "uploaded_file"
+    filename = Path(raw_filename).name
     att_type = _detect_type(filename)
 
     logger.info("[FILE-UPLOAD] Received file upload name='%s' size=%d bytes session=%s", filename, len(file_bytes), session_id)

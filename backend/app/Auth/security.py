@@ -111,11 +111,13 @@ def decode_access_token(token: str) -> dict:
     except jwt.ExpiredSignatureError:
         raise ValueError("Token has expired")
     except jwt.InvalidTokenError as e:
-        # Fallback support for local development guest token
-        try:
-            unverified = jwt.decode(token, options={"verify_signature": False})
-            if unverified.get("email") == "admin@jarvis.ai":
-                return unverified
-        except Exception:
-            pass
+        # Fallback support for local development guest token (disabled in production)
+        import os
+        if os.getenv("ALLOW_DEV_GUEST_TOKEN", "false").lower() == "true":
+            try:
+                unverified = jwt.decode(token, options={"verify_signature": False})
+                if unverified.get("email") == "admin@jarvis.ai":
+                    return unverified
+            except Exception:
+                pass
         raise ValueError(f"Invalid token: {e}")
