@@ -64,6 +64,19 @@ app = FastAPI(
 )
 
 
+
+
+
+@app.middleware("http")
+async def debug_request(request: Request, call_next):
+    print("METHOD:", request.method)
+    print("ORIGIN:", request.headers.get("origin"))
+    print("ACCESS-CONTROL-REQUEST-METHOD:", request.headers.get("access-control-request-method"))
+    response = await call_next(request)
+    return response
+
+
+    
 # ---------------------------------------------------------------------------
 # CORS middleware
 # ---------------------------------------------------------------------------
