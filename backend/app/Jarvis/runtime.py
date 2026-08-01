@@ -84,9 +84,54 @@ _FOLLOWUP_SIGNALS = [
 ]
 
 
+from app.Config import settings
 from app.Tools.live_information import live_tool_registry, ToolResult
-
 from app.Jarvis.intent_router import QueryIntent, QueryIntentClassifier
+
+
+def _is_real_search_provider_configured() -> tuple[bool, str]:
+    """Check if a verified real search API provider is configured (Serper, Tavily, Brave, or SEARCH_API_KEY).
+    DuckDuckGo (FallbackProvider) is NOT considered a verified real provider for live queries.
+    Returns (is_configured: bool, provider_name: str).
+    """
+    provider_override = (settings.SEARCH_PROVIDER or "").lower()
+    if provider_override not in ("auto", "", "fallback"):
+        key = settings.SEARCH_API_KEY or getattr(settings, f"{provider_override.upper()}_API_KEY", None)
+        if key:
+            return True, provider_override
+        return False, provider_override
+
+    if settings.SERPER_API_KEY:
+        return True, "serper"
+    if settings.TAVILY_API_KEY:
+        return True, "tavily"
+    if settings.BRAVE_API_KEY:
+        return True, "brave"
+    if settings.SEARCH_API_KEY:
+        return True, "search_api"
+
+    return False, "none"
+
+
+def _categorize_search_failure(search_error: str) -> str:
+    """Categorize search execution errors into specific user-facing diagnostic messages."""
+    err_lower = (search_error or "").lower()
+
+    if "401" in err_lower or "unauthorized" in err_lower:
+        return "Search provider authorization failed (Invalid API key)."
+    if "403" in err_lower or "forbidden" in err_lower or "tunnel" in err_lower:
+        return "Search provider could not be reached due to a network or proxy restriction (HTTP 403 Forbidden)."
+    if "429" in err_lower or "quota" in err_lower or "too many requests" in err_lower or "rate limit" in err_lower:
+        return "Search provider quota or rate limit exceeded."
+    if "timeout" in err_lower or "timed out" in err_lower or "504" in err_lower:
+        return "Search request timed out."
+    if "connection" in err_lower or "urlerror" in err_lower or "errno" in err_lower or "unreachable" in err_lower or "refused" in err_lower:
+        return "Search provider could not be reached (Network/DNS connection error)."
+    if "empty" in err_lower or "no results" in err_lower or "no verified content" in err_lower:
+        return "No verified search results were returned for this query."
+
+    return f"Search execution failed ({search_error})"
+
 
 def _evaluate_tool_and_rag_context(
     message: str,
@@ -140,52 +185,134 @@ def _evaluate_tool_and_rag_context(
 
     # 3. LIVE SEARCH INTENT
     if intent == QueryIntent.LIVE_SEARCH:
-        # Check structured live info first (stocks, crypto, weather, etc.)
+
+        # ── Structured log: entry ──────────────────────────────────────────
+        is_configured, provider_name = _is_real_search_provider_configured()
+        logger.info(
+            "[LIVE-SEARCH] Intent=LIVE_SEARCH | Query='%s' | Provider=%s | Configured=%s",
+            message[:60], provider_name, is_configured,
+        )
+
+        # ── Layer 1: Structured live data (stocks, crypto, weather, forex) ─
+        # Uses domain-specific APIs (CoinGecko, Open-Meteo, etc.) for verified
+        # numeric payloads. Falls through to Layer 2 on failure instead of
+        # gating immediately — web search is a second-chance for these domains.
         classification = SearchIntentClassifier.classify(message)
         if classification.is_live_info:
             domain = classification.domain or "commodity"
             logger.info(
-                "[LIVE-DATA-LOG] Query='%s' Intent=%s Domain=%s Provider=%s Confidence=%.2f",
-                message[:60], classification.intent, domain, classification.provider, classification.confidence
+                "[LIVE-SEARCH] Node=StructuredTool | Domain=%s | Provider=%s | Status=Executing",
+                domain, classification.provider,
             )
-
             tool_result: ToolResult = live_tool_registry.dispatch(domain=domain, query=message)
 
-            if not tool_result.success or not tool_result.verified or tool_result.confidence < 0.8:
-                fail_closed_text = (
-                    f"=== LIVE DATA HARD GATE FAILURE ===\n"
-                    f"Domain: {domain} | Query: '{message}'\n"
-                    f"Status: Fail-Closed - Verified live data unavailable ({tool_result.error or 'Unverified'})\n"
-                    f"SYSTEM DIRECTIVE (FAIL CLOSED): Verified real-time data could not be retrieved from reliable sources.\n"
-                    f"Do NOT invent, guess, estimate, or approximate numbers from pretrained memory.\n"
-                    f"YOU MUST RESPOND EXACTLY WITH: 'I couldn't retrieve verified live data right now.'\n"
-                    f"==================================="
+            if tool_result.success and tool_result.verified and tool_result.confidence >= 0.8:
+                logger.info(
+                    "[LIVE-SEARCH] Node=StructuredTool | Domain=%s | Status=Success | Source=%s | Confidence=%.2f",
+                    domain, tool_result.source, tool_result.confidence,
                 )
-                return [SystemMessage(content=fail_closed_text)]
+                structured_text = (
+                    f"=== VERIFIED LIVE STRUCTURED DATA ===\n"
+                    f"Domain: {domain} | Source: {tool_result.source} | Confidence: {tool_result.confidence} | Timestamp: {tool_result.timestamp.isoformat()}\n"
+                    f"Payload: {json.dumps(tool_result.payload, indent=2)}\n"
+                    f"=====================================\n"
+                    f"LLM FORMATTING DIRECTIVES:\n"
+                    f"1. You are acting ONLY as a text formatter for the verified JSON payload above.\n"
+                    f"2. Present the exact numeric values, units, and currency specified in the payload.\n"
+                    f"3. Do NOT infer, estimate, calculate, fill missing values, or alter any numbers."
+                )
+                return [SystemMessage(content=structured_text)]
 
-            structured_text = (
-                f"=== VERIFIED LIVE STRUCTURED DATA ===\n"
-                f"Domain: {domain} | Source: {tool_result.source} | Confidence: {tool_result.confidence} | Timestamp: {tool_result.timestamp.isoformat()}\n"
-                f"Payload: {json.dumps(tool_result.payload, indent=2)}\n"
-                f"=====================================\n"
-                f"LLM FORMATTING DIRECTIVES:\n"
-                f"1. You are acting ONLY as a text formatter for the verified JSON payload above.\n"
-                f"2. Present the exact numeric values, units, and currency specified in the payload.\n"
-                f"3. Do NOT infer, estimate, calculate, fill missing values, or alter any numbers."
+            logger.warning(
+                "[LIVE-SEARCH] Node=StructuredTool | Domain=%s | Status=Failed | Reason=%s | Fallback=WebSearch",
+                domain, tool_result.error or "Unverified",
             )
-            return [SystemMessage(content=structured_text)]
+            # Fall through to Layer 2 — web search may still retrieve information.
 
-        # General web search fallback for live events/news
+        # ── Layer 2: Real web search (primary for non-structured; fallback for structured) ─
+        # DuckDuckGo scraping (FallbackProvider) is NOT treated as a real provider
+        # because it may serve stale cached HTML for "latest X" queries, causing
+        # hallucinations with outdated version numbers or product names.
+        # Only Serper, Tavily, and Brave with configured API keys qualify.
+        if not is_configured:
+            logger.warning(
+                "[LIVE-SEARCH] Node=WebSearch | Provider=None | Status=Missing API Key | FallbackUsed=False"
+            )
+            unavailable_text = (
+                f"=== LIVE SEARCH PROVIDER UNAVAILABLE ===\n"
+                f"Query: '{message}'\n"
+                f"Status: No verified search provider configured. SEARCH_PROVIDER=auto but no API keys found.\n"
+                f"SYSTEM DIRECTIVE: A real-time web search was required but no verified search provider is available.\n"
+                f"Do NOT answer this query from internal training knowledge. Do NOT guess, estimate, or fabricate.\n"
+                f"YOU MUST RESPOND EXACTLY WITH: 'I couldn't retrieve verified live information right now. "
+                f"No search provider is configured. Please add a SERPER_API_KEY, TAVILY_API_KEY, or BRAVE_API_KEY.'\n"
+                f"========================================"
+            )
+            return [SystemMessage(content=unavailable_text)]
+
+        # Execute web search with the configured real provider
+        search_error: str | None = None
         try:
             search_tool = registry.get("web_search")
             if search_tool:
+                logger.info(
+                    "[LIVE-SEARCH] Node=WebSearch | Provider=%s | Status=Executing | Query='%s'",
+                    provider_name, message[:60],
+                )
                 res = search_tool.execute(query=message)
                 if res.get("status") == "success" and res.get("results"):
-                    citation_blocks = [f"[Result {idx}]\nTitle: {r.get('title')}\nSource: {r.get('source')}\nSnippet: {r.get('snippet')}" for idx, r in enumerate(res["results"], start=1)]
-                    return [SystemMessage(content="=== LIVE SEARCH RESULTS ===\n" + "\n\n".join(citation_blocks))]
-        except Exception as e:
-            logger.error("[SEARCH-ROUTER] Search Execution Exception: %s", str(e))
-        return []
+                    raw_results = res["results"]
+                    # Strip FallbackProvider "No Provider" sentinel entries. These are
+                    # placeholder records emitted when DuckDuckGo scraping fails — they
+                    # contain no real information and would cause the LLM to hallucinate.
+                    real_results = [
+                        r for r in raw_results
+                        if r.get("source", "") != "No Provider"
+                        and "No live search results available" not in (r.get("snippet", ""))
+                    ]
+                    if real_results:
+                        logger.info(
+                            "[LIVE-SEARCH] Node=WebSearch | Provider=%s | Status=Success | Results=%d",
+                            provider_name, len(real_results),
+                        )
+                        citation_blocks = [
+                            f"[Result {idx}]\nTitle: {r.get('title')}\nSource: {r.get('source')}\nSnippet: {r.get('snippet')}"
+                            for idx, r in enumerate(real_results, start=1)
+                        ]
+                        return [SystemMessage(content="=== LIVE SEARCH RESULTS ===\n" + "\n\n".join(citation_blocks))]
+                    search_error = "Search provider returned no verified content (results contained only unverified placeholders)."
+                else:
+                    search_error = res.get("error") or "Search provider returned empty results."
+            else:
+                search_error = "web_search tool not registered in Tool Registry."
+        except Exception as exc:
+            search_error = f"{type(exc).__name__}: {str(exc)[:120]}"
+            logger.error(
+                "[LIVE-SEARCH] Node=WebSearch | Provider=%s | Status=Exception | Error=%s",
+                provider_name, search_error,
+            )
+
+        # ── LIVE_SEARCH HARD GATE FAILURE ─────────────────────────────────
+        # All search paths failed. Emit an explicit system directive that
+        # FORBIDS the LLM from answering from internal training knowledge.
+        # This is the fail-closed guarantee for all LIVE_SEARCH intents.
+        categorized_reason = _categorize_search_failure(search_error or "")
+        logger.warning(
+            "[LIVE-SEARCH] Node=WebSearch | Provider=%s | Status=Failed | FallbackUsed=False | Reason='%s' | CategorizedReason='%s'",
+            provider_name, search_error, categorized_reason,
+        )
+        fail_closed_text = (
+            f"=== LIVE SEARCH HARD GATE FAILURE ===\n"
+            f"Query: '{message}'\n"
+            f"Status: Fail-Closed — Live web search could not retrieve verified results. ({search_error or 'Unknown error'})\n"
+            f"SYSTEM DIRECTIVE (FAIL CLOSED): Real-time web search was attempted but produced no verified information.\n"
+            f"Do NOT invent, guess, estimate, or use pretrained internal knowledge to answer this query.\n"
+            f"Do NOT fabricate version numbers, prices, news headlines, product names, or any factual claims.\n"
+            f"YOU MUST RESPOND EXACTLY WITH: 'I couldn't retrieve verified live information right now. Cause: {categorized_reason}'\n"
+            f"======================================"
+        )
+        return [SystemMessage(content=fail_closed_text)]
+
 
     # 4. TOOL INTENT
     if intent == QueryIntent.TOOL:
