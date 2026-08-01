@@ -86,6 +86,8 @@ _FOLLOWUP_SIGNALS = [
 
 from app.Tools.live_information import live_tool_registry, ToolResult
 
+from app.Jarvis.intent_router import QueryIntent, QueryIntentClassifier
+
 def _evaluate_tool_and_rag_context(
     message: str,
     session_id: str = "",
@@ -93,116 +95,161 @@ def _evaluate_tool_and_rag_context(
     active_document_id: str | None = None,
     active_filename: str | None = None,
 ) -> list[SystemMessage]:
-    """Automatic Intent Router: audits query intent and seamlessly invokes registered Tools & RAGManager."""
-    msg_lower = message.lower()
-    context_lines: list[str] = []
+    """Knowledge Router: Classifies intent BEFORE retrieval and dispatches to appropriate subsystem."""
+    has_active_doc = bool(active_document_id or active_filename)
+    has_attachment = bool(attachment_ids)
 
-    # 0. Live Information Intent Gate (Commodities, Stocks, Crypto, Weather, Forex)
-    classification = SearchIntentClassifier.classify(message)
-    if classification.is_live_info:
-        domain = classification.domain or "commodity"
-        logger.info(
-            "[LIVE-DATA-LOG] Query='%s' Intent=%s Domain=%s Provider=%s Confidence=%.2f",
-            message[:60], classification.intent, domain, classification.provider, classification.confidence
-        )
-
-        tool_result: ToolResult = live_tool_registry.dispatch(domain=domain, query=message)
-
-        logger.info(
-            "[LIVE-DATA-LOG] ToolSelected=%s Success=%s Verified=%s Confidence=%.2f Source='%s' Error='%s'",
-            domain, tool_result.success, tool_result.verified, tool_result.confidence, tool_result.source, tool_result.error
-        )
-        logger.info("[LIVE-DATA-LOG] Parsed Payload: %s", json.dumps(tool_result.payload))
-
-        # FAIL-CLOSED HARD GATE: If tool failed, unverified, or low confidence -> Halt & Fail Closed
-        if not tool_result.success or not tool_result.verified or tool_result.confidence < 0.8:
-            logger.warning(
-                "[LIVE-DATA-LOG] GATE HALTED: Unverified live data (success=%s, verified=%s, confidence=%.2f, error='%s')",
-                tool_result.success, tool_result.verified, tool_result.confidence, tool_result.error
-            )
-            fail_closed_text = (
-                f"=== LIVE DATA HARD GATE FAILURE ===\n"
-                f"Domain: {domain} | Query: '{message}'\n"
-                f"Status: Fail-Closed - Verified live data unavailable ({tool_result.error or 'Unverified'})\n"
-                f"SYSTEM DIRECTIVE (FAIL CLOSED): Verified real-time data could not be retrieved from reliable sources.\n"
-                f"Do NOT invent, guess, estimate, or approximate numbers from pretrained memory.\n"
-                f"YOU MUST RESPOND EXACTLY WITH: 'I couldn't retrieve verified live data right now.'\n"
-                f"==================================="
-            )
-            return [SystemMessage(content=fail_closed_text)]
-
-        # SUCCESS PATH: Verified structured JSON payload
-        structured_text = (
-            f"=== VERIFIED LIVE STRUCTURED DATA ===\n"
-            f"Domain: {domain} | Source: {tool_result.source} | Confidence: {tool_result.confidence} | Timestamp: {tool_result.timestamp.isoformat()}\n"
-            f"Payload: {json.dumps(tool_result.payload, indent=2)}\n"
-            f"=====================================\n"
-            f"LLM FORMATTING DIRECTIVES:\n"
-            f"1. You are acting ONLY as a text formatter for the verified JSON payload above.\n"
-            f"2. Present the exact numeric values, units, and currency specified in the payload.\n"
-            f"3. Do NOT infer, estimate, calculate, fill missing values, or alter any numbers."
-        )
-        return [SystemMessage(content=structured_text)]
-
-    # 1. Date / Time -> datetime tool
-    if any(kw in msg_lower for kw in ["date", "time", "clock", "today", "day of week"]):
+    # If session_id is provided and there are session attachments, treat as doc-context session
+    if not has_attachment and session_id:
         try:
-            logger.info("[TOOL-ROUTER] Intent Detected: Date/Time | Query='%s'", message[:40])
+            session_atts = rag_manager.repo.list_session_attachments(session_id)
+            if session_atts:
+                has_attachment = True
+        except Exception:
+            pass
+
+    intent = QueryIntentClassifier.classify(
+        message=message,
+        has_active_doc=has_active_doc,
+        has_attachment=has_attachment,
+    )
+
+    logger.info("[KNOWLEDGE-ROUTER] Query='%s' -> Classified Intent: %s", message[:60], intent.value)
+
+    # 1. MEMORY INTENT
+    if intent == QueryIntent.MEMORY:
+        msg_lower = message.lower()
+        if any(p in msg_lower for p in ["who am i", "what is my name", "what's my name", "do you know my name"]):
+            mem_directive = (
+                "=== MEMORY SUBSYSTEM DIRECTIVE ===\n"
+                "The user is asking about their identity ('Who am I?' / 'What is my name?').\n"
+                "1. Check the conversation history and memory below to see if the user previously stated their name or identity.\n"
+                "2. If their name or identity was previously stated, tell them their name.\n"
+                "3. If their name has NOT been provided in the conversation history or memory, respond naturally with:\n"
+                "   'I don't know yet. You haven't told me your name.'\n"
+                "4. Do NOT reference documents, files, or missing document evidence.\n"
+                "==================================="
+            )
+            return [SystemMessage(content=mem_directive)]
+        return []
+
+    # 2. GENERAL KNOWLEDGE / CHAT INTENT
+    if intent in (QueryIntent.GENERAL_KNOWLEDGE, QueryIntent.CHAT):
+        # Answer directly using LLM knowledge. Zero RAG calls, zero document error fallbacks.
+        return []
+
+    # 3. LIVE SEARCH INTENT
+    if intent == QueryIntent.LIVE_SEARCH:
+        # Check structured live info first (stocks, crypto, weather, etc.)
+        classification = SearchIntentClassifier.classify(message)
+        if classification.is_live_info:
+            domain = classification.domain or "commodity"
+            logger.info(
+                "[LIVE-DATA-LOG] Query='%s' Intent=%s Domain=%s Provider=%s Confidence=%.2f",
+                message[:60], classification.intent, domain, classification.provider, classification.confidence
+            )
+
+            tool_result: ToolResult = live_tool_registry.dispatch(domain=domain, query=message)
+
+            if not tool_result.success or not tool_result.verified or tool_result.confidence < 0.8:
+                fail_closed_text = (
+                    f"=== LIVE DATA HARD GATE FAILURE ===\n"
+                    f"Domain: {domain} | Query: '{message}'\n"
+                    f"Status: Fail-Closed - Verified live data unavailable ({tool_result.error or 'Unverified'})\n"
+                    f"SYSTEM DIRECTIVE (FAIL CLOSED): Verified real-time data could not be retrieved from reliable sources.\n"
+                    f"Do NOT invent, guess, estimate, or approximate numbers from pretrained memory.\n"
+                    f"YOU MUST RESPOND EXACTLY WITH: 'I couldn't retrieve verified live data right now.'\n"
+                    f"==================================="
+                )
+                return [SystemMessage(content=fail_closed_text)]
+
+            structured_text = (
+                f"=== VERIFIED LIVE STRUCTURED DATA ===\n"
+                f"Domain: {domain} | Source: {tool_result.source} | Confidence: {tool_result.confidence} | Timestamp: {tool_result.timestamp.isoformat()}\n"
+                f"Payload: {json.dumps(tool_result.payload, indent=2)}\n"
+                f"=====================================\n"
+                f"LLM FORMATTING DIRECTIVES:\n"
+                f"1. You are acting ONLY as a text formatter for the verified JSON payload above.\n"
+                f"2. Present the exact numeric values, units, and currency specified in the payload.\n"
+                f"3. Do NOT infer, estimate, calculate, fill missing values, or alter any numbers."
+            )
+            return [SystemMessage(content=structured_text)]
+
+        # General web search fallback for live events/news
+        try:
+            search_tool = registry.get("web_search")
+            if search_tool:
+                res = search_tool.execute(query=message)
+                if res.get("status") == "success" and res.get("results"):
+                    citation_blocks = [f"[Result {idx}]\nTitle: {r.get('title')}\nSource: {r.get('source')}\nSnippet: {r.get('snippet')}" for idx, r in enumerate(res["results"], start=1)]
+                    return [SystemMessage(content="=== LIVE SEARCH RESULTS ===\n" + "\n\n".join(citation_blocks))]
+        except Exception as e:
+            logger.error("[SEARCH-ROUTER] Search Execution Exception: %s", str(e))
+        return []
+
+    # 4. TOOL INTENT
+    if intent == QueryIntent.TOOL:
+        msg_lower = message.lower()
+        context_lines: list[str] = []
+
+        # Date / Time
+        if any(kw in msg_lower for kw in ["date", "time", "clock", "today", "day of week"]):
             dt_tool = registry.get("datetime")
             if dt_tool:
-                logger.info("[TOOL-ROUTER] Selected Tool: %s | Executing...", dt_tool.name)
                 res = dt_tool.execute()
-                logger.info("[TOOL-ROUTER] Raw Tool Output: %s", str(res)[:100])
                 if res:
                     context_lines.append(f"Current Date & Time Tool Output: {res}")
-        except Exception as e:
-            logger.error("[TOOL-ROUTER] Execution Error: %s", str(e))
 
-    # 2. Math / Calculation -> calculator tool
-    if any(kw in msg_lower for kw in ["calculate", "math", "evaluate", "square root", "factorial", "equation"]) or (
-        any(op in message for op in ["+", "*", "/", "^"]) and any(c.isdigit() for c in message)
-    ):
-        try:
-            logger.info("[TOOL-ROUTER] Intent Detected: Math/Calculation | Query='%s'", message[:40])
+        # Math / Calculation
+        if any(kw in msg_lower for kw in ["calculate", "math", "evaluate", "square root", "factorial", "equation"]) or (
+            any(op in message for op in ["+", "*", "/", "^"]) and any(c.isdigit() for c in message)
+        ):
             calc_tool = registry.get("calculator")
             if calc_tool:
-                expr = message.replace("calculate", "").replace("math", "").replace("evaluate", "").strip()
-                if not expr:
-                    expr = message
-                logger.info("[TOOL-ROUTER] Selected Tool: %s | Executing expression='%s'", calc_tool.name, expr[:40])
+                expr = message.replace("calculate", "").replace("math", "").replace("evaluate", "").strip() or message
                 res = calc_tool.execute(expression=expr)
-                logger.info("[TOOL-ROUTER] Raw Tool Output: %s", str(res)[:100])
                 if res:
                     context_lines.append(f"Calculator Tool Output: {res}")
-        except Exception as e:
-            logger.error("[TOOL-ROUTER] Execution Error: %s", str(e))
 
-    # 3. Python / Code Execution -> python tool
-    if any(kw in msg_lower for kw in ["python", "run code", "execute code", "script"]):
-        try:
-            logger.info("[TOOL-ROUTER] Intent Detected: Python/Code Execution | Query='%s'", message[:40])
+        # Python / Code execution
+        if any(kw in msg_lower for kw in ["python", "run code", "execute code", "script"]):
             py_tool = registry.get("python")
             if py_tool:
-                logger.info("[TOOL-ROUTER] Selected Tool: %s | Executing...", py_tool.name)
                 res = py_tool.execute(code=message)
-                logger.info("[TOOL-ROUTER] Raw Tool Output: %s", str(res)[:100])
                 if res:
                     context_lines.append(f"Python Tool Output: {res}")
-        except Exception as e:
-            logger.error("[TOOL-ROUTER] Execution Error: %s", str(e))
 
-    # 4. Documents / RAG -> Context-Aware Reference Resolver & Scoped Retrieval Gate
-    _DOC_INTENT_SIGNALS = [
-        "who", "what", "where", "when", "according to", "page", "slide", "section",
-        "chapter", "figure", "table", "project member", "team member", "filename",
-        "document title", "pdf", "doc", "rag", "kb", "knowledge base", "dataset",
-        "summary", "summarize", "resume", "content", "attached", "file", "give exactly",
-        "author", "architect", "engineer", "lead", "milestone", "version", "clause"
-    ]
-    has_docs = bool(rag_manager.list_documents())
-    has_doc_intent = any(sig in msg_lower for sig in _DOC_INTENT_SIGNALS)
+        # Filesystem
+        if any(kw in msg_lower for kw in ["read file", "list workspace", "list files", "directory", "folder", "filesystem", "file content"]):
+            fs_tool = registry.get("filesystem") or registry.get("file_reader")
+            if fs_tool:
+                res = fs_tool.execute(path="." if "list" in msg_lower else message)
+                if res:
+                    context_lines.append(f"Filesystem Tool Output: {res}")
 
-    if has_docs or has_doc_intent:
+        # Git
+        if any(kw in msg_lower for kw in ["git", "repository", "commit", "branch", "diff"]):
+            git_tool = registry.get("git")
+            if git_tool:
+                res = git_tool.execute(command="status" if "status" in msg_lower else "log")
+                if res:
+                    context_lines.append(f"Git Tool Output: {res}")
+
+        # Browser
+        if any(kw in msg_lower for kw in ["browse", "navigate url", "open page", "web page", "browser"]):
+            browser_tool = registry.get("browser")
+            if browser_tool:
+                res = browser_tool.execute(url=message)
+                if res:
+                    context_lines.append(f"Browser Tool Output: {res}")
+
+        if context_lines:
+            combined_text = "--- RETRIEVED TOOL CONTEXT ---\n" + "\n".join(context_lines) + "\n-------------------------------"
+            return [SystemMessage(content=combined_text)]
+        return []
+
+    # 5. DOCUMENT QA INTENT
+    if intent == QueryIntent.DOCUMENT_QA:
         try:
             from app.RAG.reference_resolver import ReferenceResolver
             from app.Config.settings import RAG_MIN_CONFIDENCE
@@ -214,11 +261,6 @@ def _evaluate_tool_and_rag_context(
                 session_attachments=session_atts,
                 active_document_id=active_document_id,
                 active_filename=active_filename,
-            )
-
-            logger.info(
-                "[RAG-LOG] Intent Detected: Document Search | Query='%s' Session='%s' TargetDocIDs=%s PrimaryFn='%s'",
-                message[:60], session_id, target_doc_ids, primary_fn
             )
 
             rag_res = rag_manager.hybrid_search(
@@ -233,15 +275,10 @@ def _evaluate_tool_and_rag_context(
             results = rag_res.get("results", [])
             top_score = results[0]["rerank_score"] if results else 0.0
 
-            logger.info(
-                "[RAG-LOG] Query='%s' ChunksRetrieved=%d TopRerankScore=%.4f Threshold=%.4f",
-                message[:60], len(results), top_score, RAG_MIN_CONFIDENCE
-            )
-
-            # FAIL-CLOSED HARD GATE: If no results or score < RAG_MIN_CONFIDENCE threshold -> Halt & Fail Closed
+            # FAIL-CLOSED HARD GATE ONLY FOR DOCUMENT QA INTENT
             if not results or top_score < RAG_MIN_CONFIDENCE:
                 logger.warning(
-                    "[RAG-LOG] HARD GATE HALTED: Low retrieval confidence (score=%.4f < threshold=%.4f) for query='%s'",
+                    "[RAG-LOG] HARD GATE HALTED for DOCUMENT_QA: Low retrieval confidence (score=%.4f < threshold=%.4f) for query='%s'",
                     top_score, RAG_MIN_CONFIDENCE, message[:60]
                 )
                 fail_closed_text = (
@@ -266,11 +303,10 @@ def _evaluate_tool_and_rag_context(
                 QA_PROMPT_TEMPLATE,
             )
 
-            intent = rag_res.get("intent", DocumentIntent.Q_AND_A)
+            doc_intent = rag_res.get("intent", DocumentIntent.Q_AND_A)
             doc_type = rag_res.get("document_type", "notes")
-            resp_plan = ResponsePlanner.create_response_plan(intent, doc_type, primary_filename=primary_fn or "Document")
+            resp_plan = ResponsePlanner.create_response_plan(doc_intent, doc_type, primary_filename=primary_fn or "Document")
 
-            # SUCCESS PATH: Rich structured metadata & evidence blocks
             evidence_blocks = []
             for idx, r in enumerate(results, start=1):
                 meta = r.get("metadata", {})
@@ -288,7 +324,7 @@ def _evaluate_tool_and_rag_context(
             plan_obj = rag_res.get("retrieval_plan")
             strat_name = getattr(plan_obj, "strategy", "ADAPTIVE")
 
-            if intent == DocumentIntent.OVERVIEW:
+            if doc_intent == DocumentIntent.OVERVIEW:
                 prompt_str = OVERVIEW_PROMPT_TEMPLATE.format(
                     primary_filename=primary_fn or "Document",
                     document_type=doc_type,
@@ -296,7 +332,7 @@ def _evaluate_tool_and_rag_context(
                     structured_evidence=structured_evidence_str,
                     response_directives=resp_plan.formatting_directives,
                 )
-            elif intent == DocumentIntent.SUMMARIZATION:
+            elif doc_intent == DocumentIntent.SUMMARIZATION:
                 prompt_str = SUMMARIZATION_PROMPT_TEMPLATE.format(
                     primary_filename=primary_fn or "Document",
                     document_type=doc_type,
@@ -304,14 +340,14 @@ def _evaluate_tool_and_rag_context(
                     structured_evidence=structured_evidence_str,
                     response_directives=resp_plan.formatting_directives,
                 )
-            elif intent == DocumentIntent.COMPARISON:
+            elif doc_intent == DocumentIntent.COMPARISON:
                 prompt_str = COMPARISON_PROMPT_TEMPLATE.format(
                     primary_filename=primary_fn or "Documents",
                     strategy=strat_name,
                     structured_evidence=structured_evidence_str,
                     response_directives=resp_plan.formatting_directives,
                 )
-            elif intent == DocumentIntent.PRESENTATION:
+            elif doc_intent == DocumentIntent.PRESENTATION:
                 prompt_str = PRESENTATION_PROMPT_TEMPLATE.format(
                     primary_filename=primary_fn or "Presentation",
                     strategy=strat_name,
@@ -329,69 +365,9 @@ def _evaluate_tool_and_rag_context(
 
         except Exception as e:
             logger.error("[RAG-LOG] Retrieval Error: %s", str(e))
+            return []
 
-    # 5. Filesystem -> filesystem / file_reader tool
-    if any(kw in msg_lower for kw in ["read file", "list files", "directory", "folder", "filesystem", "file content"]):
-        try:
-            fs_tool = registry.get("filesystem") or registry.get("file_reader")
-            if fs_tool:
-                res = fs_tool.execute(path="." if "list" in msg_lower else message)
-                if res:
-                    context_lines.append(f"Filesystem Tool Output: {res}")
-        except Exception:
-            pass
-
-    # 6. Git -> git tool
-    if any(kw in msg_lower for kw in ["git", "repository", "commit", "branch", "diff"]):
-        try:
-            git_tool = registry.get("git")
-            if git_tool:
-                res = git_tool.execute(command="status" if "status" in msg_lower else "log")
-                if res:
-                    context_lines.append(f"Git Tool Output: {res}")
-        except Exception:
-            pass
-
-    # 7. Browser -> browser tool
-    if any(kw in msg_lower for kw in ["browse", "navigate url", "open page", "web page", "browser"]):
-        try:
-            browser_tool = registry.get("browser")
-            if browser_tool:
-                res = browser_tool.execute(url=message)
-                if res:
-                    context_lines.append(f"Browser Tool Output: {res}")
-        except Exception:
-            pass
-
-    # 8. Standard Web search for generic queries
-    _SEARCH_TRIGGERS = [
-        "search web", "google search", "search online", "find on web", "look up",
-        "latest", "newest", "recent", "current", "right now",
-        "news", "headlines", "current events", "breaking",
-        "compare", " vs ", "versus", "research", "investigate", "analyse", "analyze",
-        "who is", "who are", "what is the latest", "what are the latest",
-    ]
-
-    is_followup = any(sig in msg_lower for sig in _FOLLOWUP_SIGNALS)
-    prior = _SESSION_SEARCH_MEMORY.get(session_id) if session_id else None
-    if is_followup and prior and prior.get("citations"):
-        context_lines.append(prior["citations"])
-    elif any(kw in msg_lower for kw in _SEARCH_TRIGGERS):
-        try:
-            search_tool = registry.get("web_search")
-            if search_tool:
-                res = search_tool.execute(query=message)
-                if res.get("status") == "success" and res.get("results"):
-                    citation_blocks = [f"[Result {idx}]\nTitle: {r.get('title')}\nSource: {r.get('source')}\nSnippet: {r.get('snippet')}" for idx, r in enumerate(res["results"], start=1)]
-                    context_lines.append("=== LIVE SEARCH RESULTS ===\n" + "\n\n".join(citation_blocks))
-        except Exception as e:
-            logger.error("[SEARCH-ROUTER] Search Execution Exception: %s", str(e))
-
-    if not context_lines:
-        return []
-
-    combined_text = "--- RETRIEVED SUBSYSTEM CONTEXT ---\n" + "\n".join(context_lines) + "\n------------------------------------"
-    return [SystemMessage(content=combined_text)]
+    return []
 
 
 class Jarvis:

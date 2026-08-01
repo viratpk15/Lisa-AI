@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "react-router"
 import { loginUser, registerUser } from "@/services/api/auth"
 import { useAuthStore, decodeJwt } from "@/services/store/authStore"
+import { resetUnauthorizedGuard } from "@/services/api/apiClient"
 import { queryKeys } from "./queryKeys"
 import { normalizeError } from "@/services/api/errors"
 
@@ -11,12 +13,17 @@ import { normalizeError } from "@/services/api/errors"
 
 /**
  * Login mutation handling JWT cache storage and token decoding.
+ * After a successful login the user is redirected to either the originally
+ * requested protected route (redirectTo) or /dashboard as default.
  */
 export const useLoginMutation = () => {
   const setUser = useAuthStore((state) => state.setUser)
   const setToken = useAuthStore((state) => state.setToken)
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
+  const redirectTo = useAuthStore((state) => state.redirectTo)
+  const setRedirectTo = useAuthStore((state) => state.setRedirectTo)
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   return useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
@@ -30,6 +37,12 @@ export const useLoginMutation = () => {
         setAuthenticated(true)
         // Reset query caches upon successful authentication
         queryClient.clear()
+        // Reset 401 guard so the new session's requests are not blocked
+        resetUnauthorizedGuard()
+        // Navigate to originally intended destination or default dashboard
+        const destination = redirectTo || "/dashboard"
+        setRedirectTo(null)
+        navigate(destination, { replace: true })
       }
     },
     onError: (error) => {
@@ -53,3 +66,4 @@ export const useRegisterMutation = () => {
     }
   })
 }
+

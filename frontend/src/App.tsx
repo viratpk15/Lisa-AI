@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from "react"
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router"
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router"
 import { RootProvider } from "@/providers"
 import AppShell from "@/components/layout/AppShell"
 import { LoadingIndicator } from "@/components/common/LoadingIndicator"
@@ -21,21 +21,32 @@ const SettingsPage = lazy(() => import("@/features/Settings/SettingsPage"))
 const AuthPage = lazy(() => import("@/features/Auth/AuthPage"))
 
 /**
- * Route protection wrapper requiring active user authentication
+ * Route protection wrapper requiring active user authentication.
+ * Records the attempted destination in the auth store so the login flow
+ * can redirect back to it after a successful authentication.
  */
 function ProtectedRoute() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const isRestored = useAuthStore((state) => state.isRestored)
+  const setRedirectTo = useAuthStore((state) => state.setRedirectTo)
+  const location = useLocation()
 
   if (!isRestored) {
     return <LoadingIndicator fullScreen message="Checking session token..." />
   }
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/auth" replace />
+  if (!isAuthenticated) {
+    // Remember where the user was trying to go before saving to /auth
+    setRedirectTo(location.pathname)
+    return <Navigate to="/auth" replace />
+  }
+
+  return <Outlet />
 }
 
 /**
- * Public route wrapper for login/registration forms
+ * Public route wrapper for login/registration forms.
+ * Authenticated users are sent directly to /dashboard.
  */
 function AnonymousRoute() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -83,8 +94,8 @@ function App() {
               </Route>
             </Route>
 
-            {/* Fallback queries */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            {/* Fallback: unknown routes go through the root auth guard */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </BrowserRouter>

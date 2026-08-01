@@ -7,10 +7,17 @@ interface AuthState {
   token: string | null
   isAuthenticated: boolean
   isRestored: boolean
+  /**
+   * Stores the protected route the user attempted to access before being
+   * redirected to /auth. After a successful login the app navigates here
+   * instead of always landing on /dashboard.
+   */
+  redirectTo: string | null
   setUser: (user: User | null) => void
   setToken: (token: string | null) => void
   setAuthenticated: (auth: boolean) => void
   setRestored: (restored: boolean) => void
+  setRedirectTo: (path: string | null) => void
   clearAuth: () => void
 }
 
@@ -45,38 +52,75 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   isAuthenticated: false,
   isRestored: false,
+  redirectTo: null,
   setUser: (user) => set({ user }),
   setToken: (token) => set({ token }),
   setAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
   setRestored: (isRestored) => set({ isRestored }),
+  setRedirectTo: (redirectTo) => set({ redirectTo }),
   clearAuth: () => {
     logoutUser()
-    set({ user: null, token: null, isAuthenticated: false })
+    set({ user: null, token: null, isAuthenticated: false, isRestored: true })
   }
 }))
 
 /**
- * Evaluates stored access tokens, restores authenticated states,
- * and seeds default guest credentials if session is empty.
+ * Returns true if the token appears to be a real cryptographic JWT.
+ * Rejects any token whose signature segment is too short (< 20 chars) or
+ * matches known fake/placeholder patterns injected by old development builds.
+ */
+const _isRealJwt = (token: string): boolean => {
+  const parts = token.split(".")
+  if (parts.length !== 3) return false
+  const sig = parts[2]
+  // Real HS256 signatures are base64url-encoded 32 bytes → 43 chars
+  // Placeholder signatures like 'default_sig' are obviously too short
+  if (sig.length < 20) return false
+  // Explicitly reject the known legacy fake token signature
+  if (sig === "default_sig") return false
+  return true
+}
+
+/**
+ * Restores authenticated session from a previously stored JWT on application
+ * boot. If no valid token is found the store is marked as restored but
+ * unauthenticated so the router guard redirects to /auth immediately.
+ *
+ * NOTE: Never auto-seeds a guest token. Unauthenticated visitors must log in.
  */
 export const restoreUserSession = (): void => {
-  let token = getStoredToken()
+  const token = getStoredToken()
+
   if (!token) {
-    // Auto-seed default guest token for instant OS access
-    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJlbWFpbCI6ImFkbWluQGphcnZpcy5haSIsImV4cCI6MjUyNDYwODAwMH0.default_sig"
-    localStorage.setItem("jarvis_access_token", token)
+    // No stored token — mark as restored but unauthenticated
+    useAuthStore.setState({ isRestored: true, isAuthenticated: false })
+    return
+  }
+
+  // Guard: reject fake/placeholder tokens left over from development builds
+  if (!_isRealJwt(token)) {
+    console.warn("[AUTH] Detected non-cryptographic token in storage — clearing.")
+    useAuthStore.getState().clearAuth()
+    return
   }
 
   const decoded = decodeJwt(token)
   if (!decoded) {
+    // Token present but malformed — clear it and mark unauthenticated
     useAuthStore.getState().clearAuth()
-    useAuthStore.setState({ isRestored: true })
     return
   }
 
-  // Restore authenticated states
+  // Valid token — check expiry
+  if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+    // Token has expired — clear it and mark unauthenticated
+    useAuthStore.getState().clearAuth()
+    return
+  }
+
+  // Restore authenticated state
   useAuthStore.setState({
-    user: { id: decoded.user_id || 1, email: decoded.email || "admin@jarvis.ai" },
+    user: { id: decoded.user_id || 1, email: decoded.email || "" },
     token,
     isAuthenticated: true,
     isRestored: true

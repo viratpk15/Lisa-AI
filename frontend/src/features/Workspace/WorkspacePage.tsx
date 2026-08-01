@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router"
 import { motion, AnimatePresence } from "framer-motion"
 import { Menu, ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from "lucide-react"
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query"
+import { useAuthStore } from "@/services/store/authStore"
 
 import { Button } from "@/components/ui/button"
 import { Sidebar } from "./components/Sidebar"
@@ -29,6 +30,7 @@ import type { Conversation, Attachment, Message, PaginatedMessagesResponse } fro
 export default function WorkspacePage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const clearAuth = useAuthStore((state) => state.clearAuth)
   const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -415,8 +417,9 @@ export default function WorkspacePage() {
         setStreamError(err.message || "Failed to stream response from server.")
 
         if (err instanceof UnauthorizedError) {
-          localStorage.removeItem("jarvis_access_token")
-          navigate("/auth")
+          // Use clearAuth to clear both localStorage and Zustand auth state atomically
+          clearAuth()
+          navigate("/auth", { replace: true })
         }
       }
     },

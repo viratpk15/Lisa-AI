@@ -10,6 +10,19 @@ import {
   UnknownError
 } from "./errors"
 import type { APIErrorResponse } from "@/types/api"
+import { logoutUser } from "@/services/api/auth"
+import { useAuthStore } from "@/services/store/authStore"
+
+/**
+ * Single-shot guard: prevents multiple concurrent 401 responses from each
+ * independently clearing auth state and triggering duplicate redirects.
+ * Reset when a new authenticated session is established.
+ */
+let _handlingUnauthorized = false
+
+export const resetUnauthorizedGuard = (): void => {
+  _handlingUnauthorized = false
+}
 
 interface RequestOptions extends RequestInit {
   timeoutMs?: number
@@ -57,6 +70,15 @@ class APIClient {
 
     switch (status) {
       case 401:
+        // Single-shot 401 handler: clear stale token and auth state exactly once.
+        // ProtectedRoute reacts to isAuthenticated becoming false and redirects to /auth.
+        if (!_handlingUnauthorized) {
+          _handlingUnauthorized = true
+          logoutUser()
+          useAuthStore.getState().clearAuth()
+          // Reset the guard after a tick so subsequent authenticated sessions work
+          setTimeout(() => { _handlingUnauthorized = false }, 2000)
+        }
         throw new UnauthorizedError(message)
       case 403:
         throw new ForbiddenError(message)
