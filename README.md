@@ -49,9 +49,42 @@ LLM Engine (Multi-Provider Model Routing)
 ```bash
 cd backend
 uv sync
-cp .env.example .env
 uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --port 8000
+```
+
+#### Environment Variables (`backend/.env`):
+Set the following keys in your local `backend/.env` (keys only, supply your own values):
+```env
+# LLM Providers
+GROQ_API_KEY=
+NVIDIA_API_KEY=
+MISTRAL_API_KEY=
+
+# Auth Security
+JWT_SECRET_KEY=
+
+# Database (optional for PostgreSQL / Supabase, defaults to local SQLite)
+DATABASE_URL=
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_KEY=
+
+# Web Search (optional)
+SERPER_API_KEY=
+TAVILY_API_KEY=
+BRAVE_API_KEY=
+
+# Google OAuth & Gmail (optional)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+
+# Job Aggregators (optional)
+ADZUNA_APP_ID=
+ADZUNA_APP_KEY=
+RAPIDAPI_KEY=
+JOOBLE_API_KEY=
 ```
 
 ### 2. Frontend Setup
