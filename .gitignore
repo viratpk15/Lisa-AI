@@ -117,6 +117,8 @@ htmlcov/
 # ============================================================
 /backend/workspace/
 /backend/data/
+/workspace/
+aurora_test_document.txt
 
 # ============================================================
 # Runtime Databases
