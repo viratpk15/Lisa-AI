@@ -57,7 +57,7 @@ export const useRAGStudioStore = create<RAGStudioStore>((set) => ({
   chunkStrategy: "recursive",
   setChunkParams: (chunkSize, chunkOverlap, chunkStrategy) => set({ chunkSize, chunkOverlap, chunkStrategy }),
 
-  queryText: "How does Jarvis implement RAG vector retrieval?",
+  queryText: "How does Lisa implement RAG vector retrieval?",
   setQueryText: (queryText) => set({ queryText }),
   topK: 5,
   setTopK: (topK) => set({ topK }),

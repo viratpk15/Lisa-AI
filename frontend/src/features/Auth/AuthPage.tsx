@@ -80,7 +80,7 @@ export default function AuthPage() {
             <div className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary" />
           </div>
           <h1 className="text-lg font-extrabold tracking-tight text-foreground flex items-center gap-1.5 leading-none">
-            Jarvis AIOS
+            Lisa AIOS
             <span className="text-[10px] font-mono font-medium border border-primary/20 text-primary bg-primary/5 px-2 py-0.5 rounded-full uppercase tracking-wider scale-90">
               V1.1
             </span>

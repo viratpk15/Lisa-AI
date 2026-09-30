@@ -1,5 +1,5 @@
 /**
- * Jarvis AIOS Canonical Types Registry
+ * Lisa AIOS Canonical Types Registry
  * Strictly typed models matching backend schemas and API payloads.
  */
 

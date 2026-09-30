@@ -4,10 +4,10 @@ import { useKnowledgeGraphQuery } from "../../services/ragApi"
 
 export function KnowledgeGraphViewer() {
   const { data: graph } = useKnowledgeGraphQuery()
-  const [selectedNode, setSelectedNode] = useState<string | null>("Jarvis_AIOS")
+  const [selectedNode, setSelectedNode] = useState<string | null>("Lisa_AIOS")
 
   const nodes = graph?.nodes || [
-    { id: "Jarvis_AIOS", label: "Jarvis AIOS", category: "System" },
+    { id: "Lisa_AIOS", label: "Lisa AIOS", category: "System" },
     { id: "LangGraph", label: "LangGraph Engine", category: "Orchestrator" },
     { id: "RAG_Subsystem", label: "RAG Subsystem", category: "Module" },
     { id: "ChromaDB", label: "ChromaDB Vector Store", category: "Storage" },
@@ -15,8 +15,8 @@ export function KnowledgeGraphViewer() {
   ]
 
   const edges = graph?.edges || [
-    { source: "Jarvis_AIOS", target: "LangGraph", relation: "uses" },
-    { source: "Jarvis_AIOS", target: "RAG_Subsystem", relation: "includes" },
+    { source: "Lisa_AIOS", target: "LangGraph", relation: "uses" },
+    { source: "Lisa_AIOS", target: "RAG_Subsystem", relation: "includes" },
     { source: "RAG_Subsystem", target: "ChromaDB", relation: "indexes into" },
     { source: "LangGraph", target: "ToolEngine", relation: "invokes" },
   ]

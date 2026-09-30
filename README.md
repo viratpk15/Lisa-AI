@@ -1,10 +1,10 @@
-# Jarvis AIOS Placement Edition v1.0
+# Lisa AIOS Placement Edition v1.0
 
 [![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)](docs/RELEASE_NOTES_v1.0.md)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](docs/RELEASE_READINESS.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](docs/LICENSE_NOTICE.md)
 
-**Jarvis AIOS** is a production-grade AI Operating System designed for extensibility, maintainability, security, and multi-cloud deployment.
+**Lisa AIOS** is a production-grade AI Operating System designed for extensibility, maintainability, security, and multi-cloud deployment.
 
 It unifies autonomous agent orchestration, RAG retrieval, prompt engineering, dynamic LLM model routing, visual workflow graph building, and multi-cluster deployment under a single integrated platform.
 
@@ -12,7 +12,7 @@ It unifies autonomous agent orchestration, RAG retrieval, prompt engineering, dy
 
 ## 🏛️ Architecture Overview
 
-Jarvis AIOS follows a strict 7-layer decoupled architecture:
+Lisa AIOS follows a strict 7-layer decoupled architecture:
 
 ```
 FastAPI Gateway (/api/v1/*)

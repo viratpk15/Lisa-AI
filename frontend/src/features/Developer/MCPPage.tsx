@@ -38,7 +38,7 @@ export default function MCPPage() {
       <Card className="border-border/70 bg-card/50 shadow-xs">
         <CardHeader>
           <CardTitle className="text-base font-semibold">Active MCP Servers</CardTitle>
-          <CardDescription>Servers currently registered with the Jarvis AIOS runtime.</CardDescription>
+          <CardDescription>Servers currently registered with the Lisa AIOS runtime.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="py-12 text-center space-y-3">

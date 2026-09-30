@@ -202,7 +202,7 @@ export const Composer: React.FC<ComposerProps> = ({
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Message Jarvis or instruct agent..."
+          placeholder="Message Lisa or instruct agent..."
           rows={1}
           disabled={disabled || isStreaming}
           className="w-full resize-none bg-transparent px-4 pt-4 pb-2 border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/60 max-h-45 overflow-y-auto"

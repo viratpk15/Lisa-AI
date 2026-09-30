@@ -93,7 +93,7 @@ export default function ConnectionsPage() {
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <div>
             <CardTitle className="text-base font-semibold">Configured Service Integrations</CardTitle>
-            <CardDescription>Accounts authorized for Jarvis AIOS personal tools.</CardDescription>
+            <CardDescription>Accounts authorized for Lisa AIOS personal tools.</CardDescription>
           </div>
           <Button
             variant="ghost"

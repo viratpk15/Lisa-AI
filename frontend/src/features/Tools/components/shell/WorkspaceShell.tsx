@@ -68,7 +68,7 @@ export function WorkspaceShell({
             <div className="p-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded">
               <Wrench className="h-4 w-4" />
             </div>
-            <span className="text-xs font-bold tracking-wide uppercase text-foreground">Jarvis AIOS</span>
+            <span className="text-xs font-bold tracking-wide uppercase text-foreground">Lisa AIOS</span>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs font-semibold text-cyan-400">Studio Framework</span>
           </div>

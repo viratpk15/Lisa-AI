@@ -10,7 +10,7 @@ export function ChunkInspector() {
   const setChunkParams = useRAGStudioStore((s) => s.setChunkParams)
 
   const [sampleText, setSampleText] = useState(
-    "Jarvis AIOS is a high-performance AI Operating System engineered for extensibility and production deployment. It orchestrates LangGraph execution nodes and ToolEngine tool execution routines with ChromaDB HNSW vector index."
+    "Lisa AIOS is a high-performance AI Operating System engineered for extensibility and production deployment. It orchestrates LangGraph execution nodes and ToolEngine tool execution routines with ChromaDB HNSW vector index."
   )
   const [chunkPreviews, setChunkPreviews] = useState<any[]>([])
   const [isProcessing, setIsProcessing] = useState(false)

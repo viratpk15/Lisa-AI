@@ -156,7 +156,7 @@ class APIClient {
 
       if (error instanceof TypeError) {
         // Typically indicates DNS failure, host unreachable or CORS blocking
-        throw new NetworkError("Connection refused by Jarvis server.")
+        throw new NetworkError("Connection refused by Lisa server.")
       }
 
       if (error instanceof APIError) {

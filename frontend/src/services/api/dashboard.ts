@@ -7,7 +7,7 @@ import type { DashboardResponse } from "@/types/api"
  */
 
 /**
- * Fetches dashboard aggregation statistics from the Jarvis runtime.
+ * Fetches dashboard aggregation statistics from the Lisa runtime.
  *
  * KNOWN LIMITATION: the backend has no aggregation endpoint that returns
  * combined tools/memory/agents/system stats in one call — `/system/telemetry`

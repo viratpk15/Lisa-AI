@@ -110,7 +110,7 @@ export class TimeoutError extends APIError {
  * HTTP 5xx: Backend system crash exceptions
  */
 export class ServerError extends APIError {
-  constructor(message = "Internal Server Error occurred inside Jarvis kernel.") {
+  constructor(message = "Internal Server Error occurred inside Lisa kernel.") {
     super(500, "internal_server_error", message, undefined, true)
     this.name = "ServerError"
   }

@@ -1,5 +1,5 @@
 /**
- * Jarvis AIOS — Tool Console Type Definitions
+ * Lisa AIOS — Tool Console Type Definitions
  */
 
 export type PermissionLevel = "PUBLIC" | "USER" | "ADMIN" | "SYSTEM" | "INTERNAL"

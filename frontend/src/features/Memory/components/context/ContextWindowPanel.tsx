@@ -96,7 +96,7 @@ export function ContextWindowPanel() {
           <span className="text-[10px] text-muted-foreground uppercase font-bold">Assembled LLM Prompt Payload</span>
         </div>
         <pre className="p-4 bg-[#0D1117] border border-border/40 rounded-xl text-cyan-300 text-[11px] leading-relaxed overflow-x-auto whitespace-pre-wrap">
-          {contextData?.assembled_prompt || "<system>You are Jarvis AIOS core agent runtime.</system>\n<memory_context>[Semantic] User active session default</memory_context>"}
+          {contextData?.assembled_prompt || "<system>You are Lisa AIOS core agent runtime.</system>\n<memory_context>[Semantic] User active session default</memory_context>"}
         </pre>
       </div>
     </div>

@@ -1,5 +1,5 @@
 /**
- * Jarvis AIOS environment configurations
+ * Lisa AIOS environment configurations
  * Resolves env parameters cleanly and validates required variables at startup.
  */
 

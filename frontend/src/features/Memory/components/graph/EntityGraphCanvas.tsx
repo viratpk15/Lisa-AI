@@ -12,7 +12,7 @@ export function EntityGraphCanvas() {
   const { data: graphData } = useKnowledgeGraphQuery()
 
   const nodes: EntityNode[] = graphData?.nodes || [
-    { id: 1, name: "Jarvis_AIOS", category: "System", attributes: {}, created_at: "" },
+    { id: 1, name: "Lisa_AIOS", category: "System", attributes: {}, created_at: "" },
     { id: 2, name: "Memory_Studio", category: "Subsystem", attributes: {}, created_at: "" },
     { id: 3, name: "LangGraph", category: "Orchestrator", attributes: {}, created_at: "" },
     { id: 4, name: "ChromaDB", category: "VectorStore", attributes: {}, created_at: "" },

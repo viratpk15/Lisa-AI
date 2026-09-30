@@ -11,7 +11,7 @@ export function VectorProjectionMap() {
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null)
 
   const points = data?.points || [
-    { id: "vec_1", session_id: selectedSessionId, text_preview: "Jarvis Memory Studio 5-tier architecture", x: 25, y: 35, tier: "long_term" },
+    { id: "vec_1", session_id: selectedSessionId, text_preview: "Lisa Memory Studio 5-tier architecture", x: 25, y: 35, tier: "long_term" },
     { id: "vec_2", session_id: selectedSessionId, text_preview: "LangGraph execution state persistence", x: -40, y: 55, tier: "conversation" },
     { id: "vec_3", session_id: selectedSessionId, text_preview: "Reciprocal Rank Fusion hybrid search", x: 10, y: -45, tier: "long_term" },
     { id: "vec_4", session_id: selectedSessionId, text_preview: "Semantic graph entity extraction", x: -20, y: -30, tier: "semantic" },

@@ -1,5 +1,5 @@
 /**
- * Jarvis AIOS — Prompt Studio Type Definitions
+ * Lisa AIOS — Prompt Studio Type Definitions
  */
 
 export interface PromptSummary {
