@@ -1,6 +1,6 @@
-# Lisa AIOS Placement Edition v1.0
+# Lisa AIOS Placement Edition v2.0
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)](docs/RELEASE_NOTES_v1.0.md)
+[![Version](https://img.shields.io/badge/version-v2.0.0-blue.svg)](docs/RELEASE_NOTES_v2.0.md)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](docs/RELEASE_READINESS.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](docs/LICENSE_NOTICE.md)
 
