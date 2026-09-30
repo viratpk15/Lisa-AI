@@ -170,3 +170,21 @@ class IPersistenceBackend(ABC):
     def get_user_by_id(self, user_id: int) -> dict[str, Any] | None:
         """Get a user dictionary by user_id."""
         pass
+
+    @abstractmethod
+    def update_user_password(self, user_id: int, password_hash: str) -> bool:
+        """Update password hash for a user.
+
+        Returns:
+            True if updated successfully, False if user not found.
+        """
+        pass
+
+    @abstractmethod
+    def delete_user(self, user_id: int) -> bool:
+        """Delete user account and cascade cleanup related records.
+
+        Returns:
+            True if deleted successfully, False if user not found.
+        """
+        pass

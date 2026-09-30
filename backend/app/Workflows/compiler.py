@@ -17,12 +17,19 @@ Compiled Graph Runnable Execution
 import json
 import logging
 import time
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, TypedDict, cast
 
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
 logger = logging.getLogger(__name__)
+
+
+class DynamicWorkflowState(TypedDict, total=False):
+    inputs: Dict[str, Any]
+    current_output: Dict[str, Any]
+    last_executed_node: str
+    execution_logs: List[Dict[str, Any]]
 
 
 class WorkflowCompiler:
@@ -69,14 +76,14 @@ class WorkflowCompiler:
         }
         return is_valid, errors, warnings, ast
 
-    def compile_langgraph(self, definition_json: str) -> StateGraph:
+    def compile_langgraph(self, definition_json: str) -> Any:
         """Dynamically construct a LangGraph StateGraph instance from JSON AST definition."""
         data = json.loads(definition_json)
         nodes = data.get("nodes", [])
         edges = data.get("edges", [])
 
         # Create StateGraph with dict state schema
-        builder = StateGraph(dict)
+        builder: Any = cast(Any, StateGraph)(DynamicWorkflowState)
 
         # 1. Register Node Handlers
         for node in nodes:

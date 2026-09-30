@@ -94,6 +94,7 @@ class MessageSchema(BaseModel):
     role: str = Field(..., description="Message role (user, assistant, system)")
     content: str = Field(..., description="Message text content")
     timestamp: str = Field(default="", description="Human readable timestamp")
+    model: str | None = Field(default=None, description="LLM model used to answer")
 
 
 class ConversationDetail(ConversationSummary):

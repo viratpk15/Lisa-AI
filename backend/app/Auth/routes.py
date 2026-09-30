@@ -11,9 +11,18 @@ POST /auth/login  — strict rate limit (5/minute)
 POST /auth/register — strict rate limit (3/minute)
 """
 
-from fastapi import APIRouter, HTTPException, Request, status
+from typing import Any
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from app.Auth.models import UserCreate, User, Token
+from app.Auth.dependencies import get_current_user
+from app.Auth.models import (
+    AuthSuccessMessage,
+    ChangePasswordRequest,
+    DeleteAccountRequest,
+    Token,
+    User,
+    UserCreate,
+)
 from app.Auth.service import auth_service
 from app.FastAPI.schemas import ErrorResponse
 from app.FastAPI.rate_limiter import limiter
@@ -124,3 +133,93 @@ def login(request: Request, user_create: UserCreate) -> Token:
             },
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+@router.post(
+    "/change-password",
+    response_model=AuthSuccessMessage,
+    summary="Change Password",
+    description="Update password for authenticated user after verifying current password.",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Password updated successfully.",
+            "model": AuthSuccessMessage,
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Invalid current password or password constraints failed.",
+            "model": ErrorResponse,
+        },
+    },
+)
+@limiter.limit(LOGIN_RATE_LIMIT)
+def change_password(
+    request: Request,
+    payload: ChangePasswordRequest,
+    current_user: Any = Depends(get_current_user),
+) -> AuthSuccessMessage:
+    """Change the authenticated user's password."""
+    user_id = current_user.get("user_id") or current_user.get("id") if isinstance(current_user, dict) else getattr(current_user, "id", None)
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user authentication context")
+    try:
+        auth_service.change_password(
+            user_id=int(user_id),
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+        )
+        return AuthSuccessMessage(success=True, message="Password updated successfully.")
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": {
+                    "code": "password_change_failed",
+                    "message": str(exc),
+                }
+            },
+        )
+
+
+@router.delete(
+    "/account",
+    response_model=AuthSuccessMessage,
+    summary="Delete Account",
+    description="Permanently delete user account and associated personal data after confirming password.",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Account deleted successfully.",
+            "model": AuthSuccessMessage,
+        },
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Password verification failed or deletion error.",
+            "model": ErrorResponse,
+        },
+    },
+)
+@limiter.limit(LOGIN_RATE_LIMIT)
+def delete_account(
+    request: Request,
+    payload: DeleteAccountRequest,
+    current_user: Any = Depends(get_current_user),
+) -> AuthSuccessMessage:
+    """Permanently delete account for the authenticated user."""
+    user_id = current_user.get("user_id") or current_user.get("id") if isinstance(current_user, dict) else getattr(current_user, "id", None)
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user authentication context")
+    try:
+        auth_service.delete_account(
+            user_id=int(user_id),
+            password=payload.password,
+        )
+        return AuthSuccessMessage(success=True, message="Account permanently deleted.")
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": {
+                    "code": "account_deletion_failed",
+                    "message": str(exc),
+                }
+            },
+        )
+

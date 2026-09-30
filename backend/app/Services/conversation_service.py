@@ -82,12 +82,17 @@ class ConversationService:
             str_type = str(raw_type).lower()
             role = "user" if str_type in ["human", "user"] else ("assistant" if str_type in ["ai", "assistant"] else "system")
 
+            model_val = None
+            if role == "assistant":
+                model_val = m.get("model") or "Groq · llama-3.1-8b-instant"
+
             messages.append(
                 MessageSchema(
                     id=f"msg_{msg_id}_{session_id}",
                     role=role,
                     content=content,
                     timestamp=timestamp,
+                    model=model_val,
                 )
             )
 
@@ -167,7 +172,7 @@ class ConversationService:
             preview="",
             time="Just now" if is_new else "",
             pinned=bool(item.get("pinned", False)),
-            model="Gemini 2.5 Pro",
+            model=item.get("model") or "Groq · llama-3.1-8b-instant",
             unread=False,
             group="Today",
         )

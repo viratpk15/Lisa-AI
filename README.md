@@ -62,6 +62,12 @@ pnpm run dev
 ```
 Open your browser at `http://localhost:5173`.
 
+### 3. Application Navigation & Architecture
+
+- **Primary Interface (5 Items):** `Home` (`/`), `Assistant` (`/assistant`), `Email` (`/email`), `Files` (`/files`), and `Settings` (`/settings`).
+- **Developer / AIOS Portal:** Advanced AIOS capabilities (Agents, Tools, Workflows, Memory, RAG, Models, Prompts, MCP, Observability, Deployment) are organized under `Settings → Developer / AIOS` (`/settings/developer`).
+- **Model Provider Policy:** The model registry interface focuses on supported high-performance inference providers: **Groq**, **NVIDIA NIM**, and **Mistral**.
+
 ---
 
 ## 🧪 Verification Commands
@@ -84,6 +90,7 @@ pnpm run build
 
 ## 📚 Documentation Index
 
+- [Release Notes v2.0 (v2.2-ga)](docs/RELEASE_NOTES_v2.0.md)
 - [Release Notes v1.0](docs/RELEASE_NOTES_v1.0.md)
 - [Changelog](docs/CHANGELOG.md)
 - [Installation Guide](docs/INSTALLATION_GUIDE.md)

@@ -65,7 +65,7 @@ def seed_default_workflows(db: Session) -> None:
 
 def list_workflows(db: Session) -> List[WorkflowDefinitionModel]:
     seed_default_workflows(db)
-    return db.execute(select(WorkflowDefinitionModel).order_by(WorkflowDefinitionModel.id.desc())).scalars().all()
+    return list(db.execute(select(WorkflowDefinitionModel).order_by(WorkflowDefinitionModel.id.desc())).scalars().all())
 
 
 def get_workflow_by_id(db: Session, workflow_id: str) -> Optional[WorkflowDefinitionModel]:

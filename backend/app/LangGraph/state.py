@@ -1,25 +1,16 @@
 from typing import TypedDict, Any, Literal
 
-from app.LangGraph.guardrails.validator import (
-    OUTCOME_SUCCESS,
-    OUTCOME_FAILED,
-    OUTCOME_ABORTED,
-    OUTCOME_LIMIT_REACHED,
-    OUTCOME_TIMEOUT,
-    OUTCOME_INVALID_PLAN,
-)
-
 # All deterministic termination outcomes for an execution.
 ExecutionOutcome = Literal[
     "success",
     "failure",
     "replan_required",
-    OUTCOME_SUCCESS,
-    OUTCOME_FAILED,
-    OUTCOME_ABORTED,
-    OUTCOME_LIMIT_REACHED,
-    OUTCOME_TIMEOUT,
-    OUTCOME_INVALID_PLAN,
+    "SUCCESS",
+    "FAILED",
+    "ABORTED",
+    "LIMIT_REACHED",
+    "TIMEOUT",
+    "INVALID_PLAN",
 ]
 
 

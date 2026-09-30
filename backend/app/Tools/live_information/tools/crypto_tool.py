@@ -26,17 +26,31 @@ class CryptoTool:
 
     def execute(self, query: str) -> ToolResult:
         logger.info("[CRYPTO-TOOL] Executing live search for query='%s'", query)
-        expanded_query = f"live crypto price USD CoinMarketCap CoinGecko today {query}"
-        provider = SearchProviderFactory.get_provider(query=expanded_query)
-        search_res = provider.search(query=expanded_query, num_results=5)
+        q_lower = query.lower()
+        if "yesterday" in q_lower or "history" in q_lower or "past" in q_lower:
+            expanded_query = f"crypto price USD CoinMarketCap CoinGecko historical {query}"
+        else:
+            expanded_query = f"live crypto price USD CoinMarketCap CoinGecko today {query}"
 
-        if search_res.status != "success" or not search_res.results:
+        search_res = None
+        source_name = "search"
+        for provider in SearchProviderFactory.get_providers_chain(query=expanded_query):
+            try:
+                res = provider.search(query=expanded_query, num_results=5)
+                if res.status == "success" and res.results:
+                    search_res = res
+                    source_name = provider.name
+                    break
+            except Exception:
+                continue
+
+        if not search_res or not search_res.results:
             return ToolResult(
                 success=False,
                 verified=False,
                 confidence=0.0,
-                source=provider.name,
-                error=search_res.error or "Search returned no crypto data",
+                source=source_name,
+                error="Search returned no crypto data",
             )
 
         payload, source_used = self._parse_snippets(query, search_res.results)
@@ -46,7 +60,7 @@ class CryptoTool:
                 success=False,
                 verified=False,
                 confidence=0.0,
-                source=provider.name,
+                source=source_name,
                 error="Could not parse verified crypto price from search response",
             )
 
@@ -77,8 +91,8 @@ class CryptoTool:
         for r in results:
             text = f"{r.title} {r.snippet}"
             source = r.source or r.url or "CoinMarketCap"
-            # Regex for Crypto price e.g. "Bitcoin is trading at $65,420.50" or "BTC price: $65,420"
-            m = re.search(r'(?:bitcoin|btc|ethereum|eth|crypto|[\w]+)\s*(?:is trading at|price|at|:)?\s*\$\s*([\d,]+(?:\.\d+)?)', text, re.IGNORECASE)
+            # Regex for Crypto price e.g. "Bitcoin is trading at $65,420.50", "BTC was $65,420", "Bitcoin price: $65,420"
+            m = re.search(r'(?:bitcoin|btc|ethereum|eth|crypto|[\w]+)\s*(?:is trading at|was trading at|closed at|was|price|at|:)?\s*\$\s*([\d,]+(?:\.\d+)?)', text, re.IGNORECASE)
             if m:
                 p_str = m.group(1).replace(",", "")
                 try:

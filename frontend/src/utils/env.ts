@@ -36,7 +36,7 @@ const validateEnv = (): EnvConfig => {
     }
   }
 
-  const timeoutMs = timeoutMsStr ? parseInt(timeoutMsStr, 10) : 10000
+  const timeoutMs = timeoutMsStr ? parseInt(timeoutMsStr, 10) : 25000
   if (isNaN(timeoutMs) || timeoutMs <= 0) {
     throw new Error(
       `CRITICAL CONFIGURATION ERROR: VITE_API_TIMEOUT_MS "${timeoutMsStr}" must be a valid positive integer.`

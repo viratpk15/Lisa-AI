@@ -5,6 +5,7 @@ import { Zap, Award, Activity } from "lucide-react"
 import { useModelStudioStore } from "../../store/useModelStudioStore"
 import { useModelRegistryQuery, runBenchmarkApi } from "../../services/modelsApi"
 import type { BenchmarkRun } from "../../types/models.types"
+import { isAllowedProvider } from "../../utils/allowedProviders"
 
 export function BenchmarkRunnerPanel() {
   const selectedModelId = useModelStudioStore((s) => s.selectedModelId)
@@ -15,6 +16,7 @@ export function BenchmarkRunnerPanel() {
   const setCompletionTokens = useModelStudioStore((s) => s.setBenchmarkCompletionTokens)
 
   const { data: models = [] } = useModelRegistryQuery()
+  const visibleModels = models.filter((m) => isAllowedProvider({ provider_name: m.provider_name, display_name: m.display_name }))
   const [isRunning, setIsRunning] = useState(false)
   const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkRun | null>(null)
 
@@ -58,7 +60,7 @@ export function BenchmarkRunnerPanel() {
             onChange={(e) => setSelectedModelId(e.target.value)}
             className="w-full p-2 bg-secondary/30 border border-border/40 rounded text-foreground text-xs"
           >
-            {models.map((m) => (
+            {visibleModels.map((m) => (
               <option key={m.id} value={m.model_id}>{m.display_name} ({m.model_id})</option>
             ))}
           </select>

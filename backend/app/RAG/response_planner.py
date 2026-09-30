@@ -26,7 +26,7 @@ class ResponsePlanner:
 
     @classmethod
     def create_response_plan(
-        self,
+        cls,
         intent: DocumentIntent,
         document_type: str = "notes",
         primary_filename: str = "Document",

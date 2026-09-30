@@ -43,9 +43,9 @@ export interface CancellationToken {
  * Callback listeners registry for structured stream events
  */
 export interface StructuredStreamListeners {
-  onThinking?: (status: string) => void
+  onThinking?: (status: string, model?: string) => void
   onToken?: (token: string) => void
-  onDone?: (response: string) => void
+  onDone?: (response: string, model?: string) => void
   onError?: (error: Error) => void
 }
 
@@ -146,13 +146,13 @@ export const streamChatMessage = (
                 const eventType = currentEvent || parsed.type || "token"
 
                 if (eventType === "thinking") {
-                  listeners.onThinking?.(parsed.status || "Thinking...")
+                  listeners.onThinking?.(parsed.status || "Thinking...", parsed.model)
                 } else if (eventType === "token") {
                   const tokenStr = parsed.token !== undefined ? parsed.token : (parsed.data || "")
                   listeners.onToken?.(tokenStr)
                 } else if (eventType === "done") {
                   const fullResp = parsed.response !== undefined ? parsed.response : (parsed.data || "")
-                  listeners.onDone?.(fullResp)
+                  listeners.onDone?.(fullResp, parsed.model)
                 } else if (eventType === "error") {
                   const errStr = parsed.error !== undefined ? parsed.error : (parsed.data || "Stream error")
                   listeners.onError?.(new Error(errStr))

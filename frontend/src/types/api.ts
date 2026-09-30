@@ -35,6 +35,7 @@ export interface Message {
   role: "user" | "assistant" | "system"
   content: string
   timestamp: string
+  model?: string
 }
 
 // Cursor-based paginated messages response schema

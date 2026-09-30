@@ -8,6 +8,7 @@ All orchestration is done by the existing LangGraph graph — no new runtime is 
 import asyncio
 import logging
 from datetime import datetime, timezone
+from typing import Any, cast
 from uuid import uuid4
 
 from ..Data.database import SessionLocal          # reuse existing session factory
@@ -34,7 +35,8 @@ async def _run_execution(execution_id: int) -> None:
 
     # --- Phase 2: run LangGraph orchestration ---
     try:
-        await langgraph_graph.astream({"execution_id": execution_id})
+        async for _ in langgraph_graph.astream(cast(Any, {"execution_id": execution_id})):
+            pass
         final_status = "completed"
     except Exception as exc:
         logger.error("Execution %s failed: %s", execution_id, exc)

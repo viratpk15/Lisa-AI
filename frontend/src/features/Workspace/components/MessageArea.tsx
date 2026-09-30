@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useLayoutEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Loader2, ArrowDown, AlertCircle, RefreshCw } from "lucide-react"
+import { Loader2, ArrowDown, AlertCircle, RefreshCw, Sparkles } from "lucide-react"
 import { useVirtualizer } from "./useVirtualizer"
 import { MessageBubble } from "./MessageBubble"
 import { MarkdownRenderer } from "./MarkdownRenderer"
@@ -14,6 +14,7 @@ interface MessageAreaProps {
   isThinking: boolean
   isStreaming: boolean
   streamingText: string
+  streamingModel?: string
   hasMoreHistory?: boolean
   isFetchingOlder?: boolean
   isFetchOlderError?: boolean
@@ -32,6 +33,7 @@ export const MessageArea: React.FC<MessageAreaProps> = ({
   isThinking,
   isStreaming,
   streamingText,
+  streamingModel,
   hasMoreHistory = false,
   isFetchingOlder = false,
   isFetchOlderError = false,
@@ -256,15 +258,21 @@ export const MessageArea: React.FC<MessageAreaProps> = ({
         {/* Thinking state bubble */}
         {isThinking && (
           <div className="flex gap-3 max-w-3xl mr-auto select-none" role="status" aria-live="polite">
-            <span className="sr-only">Assistant is responding</span>
+            <span className="sr-only">Lisa is responding</span>
             <div className="h-8 w-8 rounded-lg border font-mono text-xs flex items-center justify-center shrink-0 shadow-sm bg-primary text-primary-foreground border-primary/20">
-              A
+              <Sparkles className="h-4 w-4" />
             </div>
-            <div className="space-y-1.5 font-mono text-xs text-muted-foreground bg-secondary/15 border border-border/50 rounded-xl p-3.5 flex items-center gap-3">
-              <Loader2 className="h-4 w-4 text-primary animate-spin" />
+            <div className="font-mono text-xs text-muted-foreground bg-secondary/15 border border-border/50 rounded-xl p-3 flex items-center gap-3">
+              <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
               <div className="space-y-0.5">
-                <span className="font-bold text-foreground block">Thinking...</span>
-                <span className="text-[10px] text-muted-foreground block">Resolving nodes: evaluate_context_vectors</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-foreground block">Lisa is thinking...</span>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary/60 text-foreground/80 border border-border/50 font-mono text-[9px] leading-tight">
+                    <Sparkles className="h-2 w-2 text-primary/70 shrink-0" />
+                    <span>{streamingModel || "Groq · llama-3.1-8b-instant"}</span>
+                  </span>
+                </div>
+                <span className="text-[10px] text-muted-foreground block">Gathering context and analyzing response</span>
               </div>
             </div>
           </div>
@@ -273,9 +281,9 @@ export const MessageArea: React.FC<MessageAreaProps> = ({
         {/* Streaming state bubble */}
         {isStreaming && (
           <div className="flex gap-3 max-w-3xl mr-auto" role="status" aria-live="polite">
-            <span className="sr-only">Assistant is responding</span>
+            <span className="sr-only">Lisa is responding</span>
             <div className="h-8 w-8 rounded-lg border font-mono text-xs flex items-center justify-center shrink-0 shadow-sm bg-primary text-primary-foreground border-primary/20">
-              A
+              <Sparkles className="h-4 w-4" />
             </div>
             <div className="space-y-1 min-w-0 flex-1">
               <div className="relative px-4 py-3 rounded-2xl border border-transparent text-sm leading-relaxed text-foreground bg-transparent">
@@ -285,6 +293,16 @@ export const MessageArea: React.FC<MessageAreaProps> = ({
                   animate="blink"
                   className="inline-block w-2 h-4 ml-1 bg-primary rounded-xs align-middle"
                 />
+              </div>
+
+              {/* Action/metadata bar for active stream */}
+              <div className="flex items-center gap-2 pl-4 text-[10px] font-mono text-muted-foreground/70 select-none">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary/60 text-foreground/80 border border-border/50 font-mono text-[10px] leading-tight">
+                  <Sparkles className="h-2.5 w-2.5 text-primary/70 shrink-0" />
+                  <span>{streamingModel || "Groq · llama-3.1-8b-instant"}</span>
+                </span>
+                <span>•</span>
+                <span className="text-primary/70 animate-pulse">generating response...</span>
               </div>
             </div>
           </div>

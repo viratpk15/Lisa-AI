@@ -197,7 +197,7 @@ def executor(state: State) -> dict[str, Any]:
 
     if result.action == ACTION_TERMINATE:
         observability_manager.record_duration("executor", calculate_duration(start_time))
-        return _terminate(state, plan, result.outcome, result.reason)
+        return _terminate(state, plan, result.outcome or EXECUTION_FAILURE, result.reason)
 
     if result.action == ACTION_REPLAN:
         logger.info("Guardrail triggered replanning: %s", result.reason)
@@ -237,7 +237,8 @@ def executor(state: State) -> dict[str, Any]:
     if not action:
         current_step = _get_current_step(plan)
         if current_step:
-            step_id = current_step.get("id")
+            raw_step_id = current_step.get("id")
+            step_id: int = int(raw_step_id) if raw_step_id is not None else 0
             _mark_step_in_progress(plan, step_id)
             history = list(state.get("step_execution_history", []))
             history.append(step_id)
@@ -343,7 +344,8 @@ def executor(state: State) -> dict[str, Any]:
     if _has_pending_steps(plan):
         next_step = _get_current_step(plan)
         if next_step:
-            step_id = next_step.get("id")
+            raw_step_id = next_step.get("id")
+            step_id: int = int(raw_step_id) if raw_step_id is not None else 0
             _mark_step_in_progress(plan, step_id)
             history = list(state.get("step_execution_history", []))
             history.append(step_id)

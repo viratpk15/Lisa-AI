@@ -88,7 +88,7 @@ class BrowserMCPClient(MCPClient):
         """Shutdown the MCP client and clean up resources."""
         self._tools.clear()
 
-    def _search_web(self, **kwargs: Any) -> list[dict[str, str]]:
+    def _search_web(self, **kwargs: Any) -> list[dict[str, Any]]:
         """Search the web for a query.
 
         Args:

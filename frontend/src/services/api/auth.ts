@@ -59,3 +59,32 @@ export const isAuthenticated = (): boolean => {
 export const getStoredToken = (): string | null => {
   return localStorage.getItem(TOKEN_KEY)
 }
+
+/**
+ * Update authenticated user's password.
+ */
+export const changePassword = async (
+  currentPassword: string,
+  newPassword: string
+): Promise<{ success: boolean; message: string }> => {
+  return apiClient.post<{ success: boolean; message: string }>("/auth/change-password", {
+    current_password: currentPassword,
+    new_password: newPassword,
+  })
+}
+
+/**
+ * Permanently delete authenticated user's account after password confirmation.
+ */
+export const deleteAccount = async (
+  password: string
+): Promise<{ success: boolean; message: string }> => {
+  const result = await apiClient.request<{ success: boolean; message: string }>("/auth/account", {
+    method: "DELETE",
+    body: JSON.stringify({ password }),
+    headers: { "Content-Type": "application/json" },
+  })
+  logoutUser()
+  return result
+}
+

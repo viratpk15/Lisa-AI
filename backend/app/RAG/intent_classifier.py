@@ -68,7 +68,7 @@ class DocumentIntentClassifier:
 
     @classmethod
     def classify(
-        self,
+        cls,
         query: str,
         has_active_doc: bool = True,
         document_type: str = "notes",
@@ -119,7 +119,7 @@ class DocumentIntentClassifier:
             best_intent: Optional[DocumentIntent] = None
             best_overlap = 0.0
 
-            for intent, anchors in self.CANONICAL_ANCHORS.items():
+            for intent, anchors in cls.CANONICAL_ANCHORS.items():
                 for anchor in anchors:
                     a_words = set(re.findall(r"\w+", anchor.lower()))
                     if not a_words:

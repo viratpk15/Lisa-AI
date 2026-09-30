@@ -72,7 +72,7 @@ def seed_default_environments(db: Session) -> None:
 
 def list_environments(db: Session) -> List[DeploymentEnvironmentModel]:
     seed_default_environments(db)
-    return db.execute(select(DeploymentEnvironmentModel).order_by(DeploymentEnvironmentModel.id.asc())).scalars().all()
+    return list(db.execute(select(DeploymentEnvironmentModel).order_by(DeploymentEnvironmentModel.id.asc())).scalars().all())
 
 
 def get_environment_by_id(db: Session, env_id: str) -> Optional[DeploymentEnvironmentModel]:
@@ -94,7 +94,7 @@ def create_environment(
 
 def list_targets(db: Session) -> List[DeploymentTargetModel]:
     seed_default_environments(db)
-    return db.execute(select(DeploymentTargetModel)).scalars().all()
+    return list(db.execute(select(DeploymentTargetModel)).scalars().all())
 
 
 def create_target(
@@ -142,7 +142,7 @@ def create_release(
 def list_releases(db: Session, env_id: Optional[str] = None) -> List[DeploymentReleaseModel]:
     seed_default_environments(db)
     query = select(DeploymentReleaseModel).order_by(DeploymentReleaseModel.id.desc())
-    return db.execute(query).scalars().all()
+    return list(db.execute(query).scalars().all())
 
 
 # ---------------------------------------------------------------------------
@@ -150,9 +150,11 @@ def list_releases(db: Session, env_id: Optional[str] = None) -> List[DeploymentR
 # ---------------------------------------------------------------------------
 
 def list_secrets(db: Session, env_db_id: int) -> List[SecretVaultEntryModel]:
-    return db.execute(
-        select(SecretVaultEntryModel).where(SecretVaultEntryModel.env_id == env_db_id)
-    ).scalars().all()
+    return list(
+        db.execute(
+            select(SecretVaultEntryModel).where(SecretVaultEntryModel.env_id == env_db_id)
+        ).scalars().all()
+    )
 
 
 def save_secret(db: Session, env_db_id: int, secret_key: str, raw_val: str) -> SecretVaultEntryModel:
@@ -191,7 +193,7 @@ def create_backup(db: Session, env_db_id: int, snapshot_name: str, path: str, si
 
 def list_backups(db: Session) -> List[DatabaseBackupModel]:
     seed_default_environments(db)
-    return db.execute(select(DatabaseBackupModel).order_by(DatabaseBackupModel.id.desc())).scalars().all()
+    return list(db.execute(select(DatabaseBackupModel).order_by(DatabaseBackupModel.id.desc())).scalars().all())
 
 
 # ---------------------------------------------------------------------------
@@ -214,4 +216,4 @@ def record_audit_log(
 
 
 def list_audit_logs(db: Session) -> List[DeploymentAuditLogModel]:
-    return db.execute(select(DeploymentAuditLogModel).order_by(DeploymentAuditLogModel.id.desc())).scalars().all()
+    return list(db.execute(select(DeploymentAuditLogModel).order_by(DeploymentAuditLogModel.id.desc())).scalars().all())

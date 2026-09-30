@@ -3,13 +3,15 @@ import { Sparkles, Cpu, CheckCircle, Plus } from "lucide-react"
 import { useModelRegistryQuery, setDefaultModelApi, registerModelApi } from "../../services/modelsApi"
 import { useQueryClient } from "@tanstack/react-query"
 import { queryKeys } from "@/services/queries/queryKeys"
+import { isAllowedProvider } from "../../utils/allowedProviders"
 
 export function ModelRegistryGrid() {
   const queryClient = useQueryClient()
   const { data: models = [], isLoading, isError, error } = useModelRegistryQuery()
+  const visibleModels = models.filter((m) => isAllowedProvider({ provider_name: m.provider_name, display_name: m.display_name }))
 
   const [showAddModal, setShowAddModal] = useState(false)
-  const [providerName, setProviderName] = useState("google")
+  const [providerName, setProviderName] = useState("groq")
   const [modelId, setModelId] = useState("")
   const [displayName, setDisplayName] = useState("")
   const [contextWindow, setContextWindow] = useState(128000)
@@ -73,7 +75,7 @@ export function ModelRegistryGrid() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
-          {models.map((model) => (
+          {visibleModels.map((model) => (
             <div
               key={model.id}
               className={`p-4 rounded-xl border transition-all duration-200 flex flex-col justify-between space-y-3 font-mono ${

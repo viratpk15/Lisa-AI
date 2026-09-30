@@ -16,6 +16,7 @@ import { streamChatMessage, type CancellationToken } from "@/services/api/sse"
 
 import { queryKeys } from "@/services/queries/queryKeys"
 import { UnauthorizedError } from "@/services/api/errors"
+import { exportDiscussionPdf } from "./utils/pdfExport"
 import {
   useConversationsQuery,
   useConversationDetailQuery,
@@ -26,6 +27,7 @@ import {
   useTogglePinMutation
 } from "@/services/queries/chat"
 import type { Conversation, Attachment, Message, PaginatedMessagesResponse } from "@/types/api"
+import { useInspectorStore } from "@/features/Workspace/inspectorStore"
 
 export default function WorkspacePage() {
   const navigate = useNavigate()
@@ -53,6 +55,7 @@ export default function WorkspacePage() {
   const [isThinking, setIsThinking] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState("")
+  const [streamingModel, setStreamingModel] = useState<string>("Groq · llama-3.1-8b-instant")
   const [streamError, setStreamError] = useState<string | null>(null)
   const [cancelToken, setCancelToken] = useState<CancellationToken | null>(null)
   const [optimisticUserMsg, setOptimisticUserMsg] = useState<Message | null>(null)
@@ -164,6 +167,33 @@ export default function WorkspacePage() {
     }
   }, [conversations, selectedId, location])
 
+  // Support pre-populating prompt from navigation state or URL query (e.g. from Files "Ask Lisa")
+  useEffect(() => {
+    const locState = location.state as { initialPrompt?: string } | null
+    const searchParams = new URLSearchParams(location.search)
+    const promptParam = searchParams.get("prompt") || locState?.initialPrompt
+    if (promptParam) {
+      setInputText(promptParam)
+    }
+  }, [location])
+
+  // Sync active AI Context to Inspector Panel
+  useEffect(() => {
+    if (activeId) {
+      const activeSummary = conversations.find((c) => c.id === activeId)
+      const currentAtt = sessionActiveAttachmentMap[activeId]
+      useInspectorStore.getState().setAIContext({
+        sessionTitle: activeSummary?.title || conversationDetail?.title || "Conversation",
+        model: activeSummary?.model || "Lisa Standard",
+        status: isThinking ? "thinking" : isStreaming ? "streaming" : "idle",
+        activeAttachment: currentAtt?.name,
+        messageCount: allPaginatedMessages.length,
+      })
+    } else {
+      useInspectorStore.getState().setAIContext(null)
+    }
+  }, [activeId, conversations, conversationDetail, isThinking, isStreaming, sessionActiveAttachmentMap, allPaginatedMessages.length])
+
   const existingSummary = conversations.find((c) => c.id === activeId)
   const selectedChat: Conversation | null = existingSummary
     ? {
@@ -177,7 +207,7 @@ export default function WorkspacePage() {
             preview: "",
             time: "Just now",
             pinned: false,
-            model: "Gemini 2.5 Pro",
+            model: "Groq · llama-3.1-8b-instant",
             unread: false,
             group: "Today",
             messages: allPaginatedMessages
@@ -257,6 +287,11 @@ export default function WorkspacePage() {
     URL.revokeObjectURL(url)
   }
 
+  const handleExportPdf = () => {
+    if (!selectedChat) return
+    exportDiscussionPdf(selectedChat.title, selectedChat.model, activeMessages)
+  }
+
   // Submit prompt using real-time SSE streaming
   const handleSend = async (text: string, attachedFiles: Attachment[]) => {
     let fullPrompt = text
@@ -299,24 +334,28 @@ export default function WorkspacePage() {
       setSessionActiveAttachmentMap((prev) => ({ ...prev, [targetSessionId]: attachedFiles[0] }))
     }
 
+    const locState = location.state as { initialPrompt?: string; activeDocumentId?: string; activeFilename?: string } | null
     const activeAtt = attachedFiles && attachedFiles.length > 0 ? attachedFiles[0] : sessionActiveAttachmentMap[targetSessionId]
     const attachmentIds = attachedFiles && attachedFiles.length > 0 ? attachedFiles.map((a) => a.id) : (activeAtt ? [activeAtt.id] : [])
-    const activeFilename = activeAtt ? activeAtt.name : undefined
+    const activeFilename = activeAtt ? activeAtt.name : (locState?.activeFilename || undefined)
+    const activeDocId = locState?.activeDocumentId || undefined
 
     const tokenHandle = streamChatMessage(
       targetSessionId,
       fullPrompt,
       {
-        onThinking: () => {
+        onThinking: (_status: string, model?: string) => {
           setIsThinking(true)
           setIsStreaming(false)
+          if (model) setStreamingModel(model)
         },
         onToken: (tokenStr: string) => {
           setIsThinking(false)
           setIsStreaming(true)
           setStreamingText((prev) => prev + tokenStr)
         },
-        onDone: async (finalResponseText?: string) => {
+        onDone: async (finalResponseText?: string, model?: string) => {
+        if (model) setStreamingModel(model)
         const userTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         const assistantTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
@@ -327,11 +366,13 @@ export default function WorkspacePage() {
           timestamp: userTime,
         }
 
+        const resolvedModel = model || streamingModel || "Groq · llama-3.1-8b-instant"
         const assistantMsg: Message = {
           id: `assistant-${Date.now()}`,
           role: "assistant",
           content: finalResponseText || streamingText,
           timestamp: assistantTime,
+          model: resolvedModel,
         }
 
         // Cache diagnostic logging before setQueryData
@@ -424,7 +465,7 @@ export default function WorkspacePage() {
       }
     },
     attachmentIds,
-    undefined,
+    activeDocId,
     activeFilename
   )
 
@@ -506,7 +547,7 @@ export default function WorkspacePage() {
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>
-                {streamError || convError?.message || "Backend communications error. Check server availability."}
+                {streamError || convError?.message || "Lisa couldn't complete that request. Check your connection or try again."}
               </span>
             </div>
             <Button
@@ -548,6 +589,7 @@ export default function WorkspacePage() {
                   onRename={handleRenameChat}
                   onDelete={() => handleDeleteChat(selectedChat.id)}
                   onExport={handleExport}
+                  onExportPdf={handleExportPdf}
                   onOpenSearch={() => setIsSearchOpen(true)}
                 />
               </div>
@@ -559,6 +601,7 @@ export default function WorkspacePage() {
               isThinking={isThinking}
               isStreaming={isStreaming}
               streamingText={streamingText}
+              streamingModel={streamingModel}
               hasMoreHistory={Boolean(hasNextPage)}
               isFetchingOlder={isFetchingNextPage}
               isFetchOlderError={isInfiniteError}
@@ -606,7 +649,7 @@ export default function WorkspacePage() {
                 >
                   <Menu className="h-4.5 w-4.5" />
                 </Button>
-                <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground font-mono ml-2">Jarvis OS</span>
+                <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground font-mono ml-2">Lisa Assistant</span>
               </div>
             )}
             <MessageArea

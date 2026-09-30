@@ -185,22 +185,46 @@ class WebSearchTool(Tool):
 
         logger.info("[SEARCH] cache=MISS query='%s'", clean_query[:50])
 
-        # ── Provider selection via factory + classifier ────────────────────
+        # ── Provider selection via factory + classifier chain ───────────────
         key_arg = None if self.api_key is _DEFAULT_KEY else (self.api_key or "")
-        provider = SearchProviderFactory.get_provider(query=clean_query, api_key=key_arg)
+        providers = SearchProviderFactory.get_providers_chain(query=clean_query, api_key=key_arg)
 
-        # ── Execute with 1-retry on transient errors ───────────────────────
-        response = provider.search(clean_query, num_results=num_results)
+        response = None
+        last_error = None
+        for provider in providers:
+            try:
+                resp = provider.search(clean_query, num_results=num_results)
+                if resp.status == "error" and resp.error:
+                    err_lower = (resp.error or "").lower()
+                    is_transient = any(t in err_lower for t in ["timeout", "urlopen", "connection", "reset"])
+                    if is_transient:
+                        logger.warning("[SEARCH] Transient error on %s, retrying once: %s", provider.name, resp.error[:80])
+                        time.sleep(0.5)
+                        resp = provider.search(clean_query, num_results=num_results)
 
-        if response.status == "error" and response.error:
-            err_lower = (response.error or "").lower()
-            is_transient = any(t in err_lower for t in ["timeout", "urlopen", "connection", "reset"])
-            if is_transient:
-                logger.warning("[SEARCH] Transient error, retrying once: %s", response.error[:80])
-                time.sleep(0.5)
-                response = provider.search(clean_query, num_results=num_results)
+                if resp.status == "success" and resp.results:
+                    response = resp
+                    break
+                else:
+                    last_error = resp.error
+                    logger.warning("[SEARCH] Provider '%s' produced no valid results (%s). Trying next provider...", provider.name, resp.error or "empty")
+            except Exception as exc:
+                last_error = str(exc)
+                logger.warning("[SEARCH] Provider '%s' exception: %s. Trying next provider...", provider.name, exc)
 
-        res_dict = response.to_dict()
+        if response is None:
+            # Fall back to empty result representation
+            res_dict = {
+                "query": clean_query,
+                "provider": "none",
+                "status": "error",
+                "latency_ms": 0.0,
+                "results": [],
+                "error": last_error or "All search providers exhausted",
+            }
+        else:
+            res_dict = response.to_dict()
+
         sanitized_error = self._sanitize_error(res_dict.get("error"))
 
         # ── URL deduplication ──────────────────────────────────────────────

@@ -201,7 +201,7 @@ class ModelManager:
         self, db: Session, model_id: str, prompt_tokens: int, completion_tokens: int, monthly_requests: int = 10000
     ) -> Dict[str, Any]:
         """Calculate multi-model cost projections."""
-        model_entry = repository.get_model_id = repository.get_model_by_id(db, model_id)
+        model_entry = repository.get_model_by_id(db, model_id)
         input_rate = model_entry.input_cost_per_1k if model_entry else 0.0015
         output_rate = model_entry.output_cost_per_1k if model_entry else 0.0020
 

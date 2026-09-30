@@ -1,4 +1,5 @@
 import React, { useEffect } from "react"
+import { useNavigate } from "react-router"
 import {
   Wrench,
   Search,
@@ -9,6 +10,7 @@ import {
   PanelLeft,
   X,
   Layers,
+  ArrowLeft,
 } from "lucide-react"
 import { useToolConsoleStore } from "../../store/useToolConsoleStore"
 
@@ -23,6 +25,7 @@ export function WorkspaceShell({
   subtitle = "Native AI Engine Tool Discovery, Schema Inspection & Execution",
   children,
 }: WorkspaceShellProps) {
+  const navigate = useNavigate()
   const toggleSidebar = useToolConsoleStore((s) => s.toggleSidebar)
   const commandPaletteOpen = useToolConsoleStore((s) => s.commandPaletteOpen)
   const setCommandPaletteOpen = useToolConsoleStore((s) => s.setCommandPaletteOpen)
@@ -44,6 +47,15 @@ export function WorkspaceShell({
       {/* 1. Studio Header Bar */}
       <header className="h-12 px-4 bg-[#121826]/80 backdrop-blur-md border-b border-border/40 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/settings/developer")}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-cyan-300 hover:text-cyan-100 bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 rounded-lg cursor-pointer transition-all shadow-xs"
+            title="Back to Developer / AIOS Portal"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back</span>
+          </button>
+
           <button
             onClick={toggleSidebar}
             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-lg cursor-pointer transition-all"
@@ -89,7 +101,13 @@ export function WorkspaceShell({
       {/* 2. Breadcrumb & Action Toolbar */}
       <div className="h-10 px-4 bg-secondary/20 border-b border-border/40 flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-muted-foreground">Studios</span>
+          <button
+            onClick={() => navigate("/settings/developer")}
+            className="flex items-center gap-1 font-medium text-muted-foreground hover:text-cyan-400 cursor-pointer transition-colors"
+            title="Developer Portal"
+          >
+            <span>Developer / AIOS</span>
+          </button>
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="font-bold text-foreground">{title}</span>
           <span className="hidden sm:inline text-[11px] text-muted-foreground font-normal ml-2 border-l border-border/40 pl-2">
@@ -98,6 +116,13 @@ export function WorkspaceShell({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/settings")}
+            className="px-2 py-0.5 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-secondary/40 border border-border/40 rounded cursor-pointer transition-colors"
+            title="Go to Settings"
+          >
+            Settings
+          </button>
           <span className="px-2 py-0.5 text-[10px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded font-semibold">
             v1.1.0 Native Engine
           </span>

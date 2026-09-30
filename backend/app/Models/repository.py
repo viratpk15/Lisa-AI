@@ -74,7 +74,7 @@ def seed_default_providers_and_models(db: Session) -> None:
 
 def list_providers(db: Session) -> List[ProviderConfigModel]:
     seed_default_providers_and_models(db)
-    return db.execute(select(ProviderConfigModel).order_by(ProviderConfigModel.id)).scalars().all()
+    return list(db.execute(select(ProviderConfigModel).order_by(ProviderConfigModel.id)).scalars().all())
 
 
 def get_provider_by_name(db: Session, name: str) -> Optional[ProviderConfigModel]:
@@ -134,7 +134,7 @@ def delete_provider(db: Session, provider_id: int) -> bool:
 
 def list_models(db: Session) -> List[LLMModelConfigModel]:
     seed_default_providers_and_models(db)
-    return db.execute(select(LLMModelConfigModel).order_by(LLMModelConfigModel.routing_priority)).scalars().all()
+    return list(db.execute(select(LLMModelConfigModel).order_by(LLMModelConfigModel.routing_priority)).scalars().all())
 
 
 def get_model_by_id(db: Session, model_id: str) -> Optional[LLMModelConfigModel]:
@@ -193,7 +193,7 @@ def set_default_model(db: Session, model_id: str) -> Optional[LLMModelConfigMode
 
 def list_routing_policies(db: Session) -> List[RoutingPolicyModel]:
     seed_default_providers_and_models(db)
-    return db.execute(select(RoutingPolicyModel)).scalars().all()
+    return list(db.execute(select(RoutingPolicyModel)).scalars().all())
 
 
 def record_benchmark_run(
@@ -220,6 +220,6 @@ def record_benchmark_run(
 
 
 def get_benchmark_runs(db: Session, limit: int = 50) -> List[BenchmarkRunModel]:
-    return db.execute(
+    return list(db.execute(
         select(BenchmarkRunModel).order_by(BenchmarkRunModel.id.desc()).limit(limit)
-    ).scalars().all()
+    ).scalars().all())

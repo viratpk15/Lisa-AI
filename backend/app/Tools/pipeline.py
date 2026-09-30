@@ -31,7 +31,7 @@ def _validate_tool_name(tool_name: str) -> None:
         raise ValueError("Tool name must not be empty.")
     if len(tool_name) > 64:
         raise ValueError("Tool name too long. Maximum length is 64 characters.")
-    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-")
+    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-.")
     for char in tool_name:
         if char not in allowed:
             raise ValueError(f"Tool name contains unsafe character: '{char}'.")
@@ -41,7 +41,7 @@ def _validate_arguments(kwargs: Dict[str, Any]) -> None:
     """Validate tool arguments for dict type and size limit."""
     if not isinstance(kwargs, dict):
         raise ValueError(f"Tool arguments must be a dictionary. Received {type(kwargs).__name__}.")
-    total_chars = sum(len(str(k)) + len(str(v)) for k, v in kwargs.items())
+    total_chars = sum(len(k) + len(str(v)) for k, v in kwargs.items())
     if total_chars > 100_000:
         raise ValueError("Tool arguments too large. Exceeds size limit of 100,000 characters.")
 
@@ -129,14 +129,18 @@ class ExecutionPipeline:
             )
 
         # 4. Execution & Observability Stage
+        exec_kwargs = dict(kwargs)
+        if caller_context is not None and "caller_context" not in exec_kwargs:
+            exec_kwargs["caller_context"] = caller_context
+
         try:
             if tool.metadata.timeout_seconds > 0:
                 raw_output = await asyncio.wait_for(
-                    tool.execute_async(**kwargs),
+                    tool.execute_async(**exec_kwargs),
                     timeout=tool.metadata.timeout_seconds,
                 )
             else:
-                raw_output = await tool.execute_async(**kwargs)
+                raw_output = await tool.execute_async(**exec_kwargs)
 
             completed_at = datetime.now(timezone.utc)
             duration_ms = calculate_duration(start_time)

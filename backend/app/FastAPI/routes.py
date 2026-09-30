@@ -66,6 +66,21 @@ def health_check() -> HealthResponse:
     return HealthResponse(status="ok", version="1.0.0")
 
 
+def _extract_username(user: object | None) -> str:
+    """Extract display username from user object or dictionary."""
+    if not user:
+        return "user"
+    email = getattr(user, "email", None) or (user.get("email") if isinstance(user, dict) else None)
+    if email and isinstance(email, str):
+        username = email.split("@")[0].strip()
+        if username:
+            return username
+    username_attr = getattr(user, "username", None) or (user.get("username") if isinstance(user, dict) else None)
+    if username_attr and isinstance(username_attr, str):
+        return username_attr.strip()
+    return "user"
+
+
 @router.post(
     "/chat",
     response_model=ChatResponse,
@@ -121,9 +136,11 @@ def chat_route(
     # Verify session ownership before processing
     verify_session_ownership(session_id=chat_request.session_id, current_user=current_user)
 
+    username = _extract_username(current_user)
     answer = chat(
         session_id=chat_request.session_id,
         message=chat_request.message,
+        user_name=username,
     )
 
     return ChatResponse(response=answer)
@@ -169,6 +186,8 @@ async def chat_stream_route(
     """
     verify_session_ownership(session_id=chat_request.session_id, current_user=current_user)
 
+    username = _extract_username(current_user)
+
     async def event_generator():
         try:
             for event in jarvis.chat_stream(
@@ -177,6 +196,7 @@ async def chat_stream_route(
                 attachment_ids=chat_request.attachment_ids,
                 active_document_id=chat_request.active_document_id,
                 active_filename=chat_request.active_filename,
+                user_name=username,
             ):
                 if await request.is_disconnected():
                     logger.info("Client disconnected during stream for session %s", chat_request.session_id)

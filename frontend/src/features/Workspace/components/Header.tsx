@@ -1,28 +1,29 @@
 import React, { useState } from "react"
-import { Pin, Share2, Download, Trash2, Edit2, Check, Sparkles, Folder, Search } from "lucide-react"
+import { Pin, Share2, Download, Trash2, Edit2, Check, Sparkles, Search, FileText } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 interface HeaderProps {
   title: string
   model: string
-  scope: string
+  scope?: string
   pinned: boolean
   onTogglePin: () => void
   onRename: (newTitle: string) => void
   onDelete: () => void
   onExport: (format: "markdown" | "json") => void
+  onExportPdf?: () => void
   onOpenSearch?: () => void
 }
 
 export const Header: React.FC<HeaderProps> = ({
   title,
   model,
-  scope,
   pinned,
   onTogglePin,
   onRename,
   onDelete,
   onExport,
+  onExportPdf,
   onOpenSearch
 }) => {
   const [isEditing, setIsEditing] = useState(false)
@@ -43,6 +44,9 @@ export const Header: React.FC<HeaderProps> = ({
       setTimeout(() => setCopiedLink(false), 2000)
     } catch (err) {
       console.error("Failed to copy URL:", err)
+    }
+    if (onExportPdf) {
+      onExportPdf()
     }
   }
 
@@ -104,10 +108,10 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Model & Metadata & Actions */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* Scope context info */}
-        <div className="hidden md:flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
-          <Folder className="h-3 w-3 text-primary/70" />
-          <span>Scope: <span className="text-foreground">{scope}</span></span>
+        {/* Assistant label */}
+        <div className="hidden md:flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
+          <Sparkles className="h-3 w-3 text-primary" />
+          <span>Lisa Assistant</span>
         </div>
 
         {/* Selected Model badge */}
@@ -141,6 +145,17 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {copiedLink ? <Check className="h-3.5 w-3.5" /> : <Share2 className="h-3.5 w-3.5" />}
           </button>
+
+          {/* Export Discussion PDF */}
+          {onExportPdf && (
+            <button
+              onClick={onExportPdf}
+              className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground cursor-pointer focus:outline-none transition-colors"
+              title="Export Discussion as Question & Answer PDF"
+            >
+              <FileText className="h-3.5 w-3.5 text-primary" />
+            </button>
+          )}
 
           {/* Export JSON */}
           <button

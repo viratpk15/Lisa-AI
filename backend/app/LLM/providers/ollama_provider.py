@@ -68,7 +68,7 @@ class OllamaProvider(BaseLLMProvider):
                 raise UnrecoverableLLMError(f"Ollama Invocation Error: {exc}") from exc
 
         # HTTP REST Fallback
-        prompt_text = "\n".join([f"{m.__class__.__name__}: {m.content}" for m in messages])
+        prompt_text = "\n".join([f"{m.__class__.__name__}: {getattr(m, 'content', str(m))}" for m in messages])
         try:
             url = f"{self.base_url}/api/generate"
             payload = json.dumps({"model": self.model_name, "prompt": prompt_text, "stream": False}).encode("utf-8")
@@ -88,7 +88,7 @@ class OllamaProvider(BaseLLMProvider):
                         token = str(chunk)
                     if token:
                         yield str(token)
-                return
+                    return
             except Exception as exc:
                 err_msg = str(exc).lower()
                 if any(k in err_msg for k in ["connection", "refused", "timeout", "unavailable", "500", "503"]):
@@ -96,7 +96,7 @@ class OllamaProvider(BaseLLMProvider):
                 raise UnrecoverableLLMError(f"Ollama Streaming Error: {exc}") from exc
 
         # HTTP REST Streaming Fallback
-        prompt_text = "\n".join([f"{m.__class__.__name__}: {m.content}" for m in messages])
+        prompt_text = "\n".join([f"{m.__class__.__name__}: {getattr(m, 'content', str(m))}" for m in messages])
         try:
             url = f"{self.base_url}/api/generate"
             payload = json.dumps({"model": self.model_name, "prompt": prompt_text, "stream": True}).encode("utf-8")

@@ -55,8 +55,9 @@ class ReferenceResolver:
 
         # 3. Extended Deictic Pronoun & Ordinal References ("this PDF", "it", "the resume", "inside pdf")
         _DEICTIC_SIGNALS = [
+            "the attached", "attached", "uploaded",
             "this pdf", "this file", "this document", "this presentation", "this report", "this cv",
-            "attached file", "attached document", "attached resume", "attached pdf",
+            "attached file", "attached document", "attached resume", "attached pdf", "attached report",
             "uploaded file", "uploaded document", "uploaded resume", "uploaded presentation",
             "above file", "above document", "that pdf", "that file", "that document", "explain this",
             "the pdf", "the file", "the document", "the resume", "the presentation", "the report",
@@ -90,6 +91,9 @@ class ReferenceResolver:
                 latest_att = attachments[-1]
                 target_doc_ids.append(latest_att["document_id"])
                 primary_fn = latest_att["filename"]
+        elif has_deictic and not target_doc_ids and not attachments:
+            # Explicitly referenced attached/uploaded document but session has no attachments!
+            target_doc_ids = ["__unmatched_session_doc__"]
 
         logger.info(
             "[REFERENCE-RESOLVER] Session='%s' Message='%s' ResolvedDocIDs=%s PrimaryFn='%s' IsComparison=%s",

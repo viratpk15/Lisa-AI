@@ -108,8 +108,11 @@ class EmbeddingManager:
         Returns:
             Text content string.
         """
-        if isinstance(message, (HumanMessage, AIMessage)):
-            return message.content
-        elif isinstance(message, SystemMessage):
-            return message.content
+        if isinstance(message, (HumanMessage, AIMessage, SystemMessage)):
+            content = message.content
+            if isinstance(content, str):
+                return content
+            elif isinstance(content, list):
+                return " ".join(str(part) for part in content)
+            return str(content)
         return ""

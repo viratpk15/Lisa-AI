@@ -43,20 +43,20 @@ class Tool(ABC):
         self.description = self.metadata.description
 
     @abstractmethod
-    def execute(self, **kwargs: Any) -> Any:
+    def execute(self, *args: Any, **kwargs: Any) -> Any:
         """
         Execute the tool synchronously.
         Must be implemented by all non-async-only subclasses.
         """
         raise NotImplementedError("Synchronous execution is not implemented for this tool.")
 
-    async def execute_async(self, **kwargs: Any) -> Any:
+    async def execute_async(self, *args: Any, **kwargs: Any) -> Any:
         """
         Execute the tool asynchronously.
         Default implementation delegates synchronous `execute` to a worker thread.
         Can be overridden by native async tools.
         """
-        return await asyncio.to_thread(self.execute, **kwargs)
+        return await asyncio.to_thread(self.execute, *args, **kwargs)
 
     async def execute_stream(self, **kwargs: Any) -> AsyncGenerator[Any, None]:
         """

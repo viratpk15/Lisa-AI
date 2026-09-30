@@ -7,6 +7,7 @@ Abstract Base Class and data models for all Web Search Providers.
 
 import time
 import urllib.request
+from urllib.error import HTTPError
 import logging
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
@@ -93,7 +94,7 @@ class SearchProvider:
                 latency_ms=latency,
                 http_status=200,
             )
-        except urllib.error.HTTPError as exc:
+        except HTTPError as exc:
             latency = (time.time() - start_time) * 1000.0
             logger.error("[SEARCH-FAILURE] provider=%s query='%s' http_status=%d error='%s'", self.name, query, exc.code, str(exc))
             return SearchResponse(

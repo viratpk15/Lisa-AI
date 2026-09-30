@@ -1,60 +1,78 @@
-import { Bot, MessageSquarePlus, Compass } from "lucide-react"
+import React from "react"
+import { Sparkles, Mail, FileText, Calendar, Search } from "lucide-react"
 
 interface EmptyStateProps {
   onSelectPrompt: (prompt: string) => void
   onNewChat: () => void
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ onSelectPrompt, onNewChat }) => {
+export const EmptyState: React.FC<EmptyStateProps> = ({ onSelectPrompt }) => {
   const suggestions = [
-    "Review standard security rules in docs/09_SECURITY.md",
-    "Generate Pytest units for the FastAPI memory indexes",
-    "Identify optimization paths for AppShell layout updates",
-    "Draft a walkthrough for vector registry migrations"
+    {
+      text: "What's important in my email today?",
+      desc: "Check urgent messages and action items",
+      icon: Mail,
+    },
+    {
+      text: "Summarize my latest files",
+      desc: "Review uploaded knowledge and documents",
+      icon: FileText,
+    },
+    {
+      text: "Help me plan my day",
+      desc: "Organize tasks and prioritize upcoming deadlines",
+      icon: Calendar,
+    },
+    {
+      text: "Research something for me",
+      desc: "Ask questions, analyze concepts, or synthesize topics",
+      icon: Search,
+    },
   ]
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-2xl mx-auto text-center h-full select-none">
-      {/* Visual illustration: Pulse rings with cognitive kernel symbol */}
+    <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 max-w-2xl mx-auto text-center h-full select-none">
+      {/* Lisa Brand Avatar Visual */}
       <div className="relative mb-6 flex items-center justify-center">
         <div className="absolute inset-0 h-20 w-20 bg-primary/10 rounded-full blur-xl animate-pulse" />
-        <div className="relative border border-primary/20 bg-card/45 backdrop-blur px-5 py-5 rounded-2xl flex items-center justify-center shadow-lg">
-          <Bot className="h-10 w-10 text-primary" />
+        <div className="relative border border-primary/20 bg-card/60 backdrop-blur px-5 py-5 rounded-2xl flex items-center justify-center shadow-lg">
+          <Sparkles className="h-10 w-10 text-primary" />
         </div>
       </div>
 
-      <h2 className="text-xl font-extrabold tracking-tight text-foreground">
-        Jarvis AIOS Cognitive Workspace
+      <h2 className="text-2xl font-bold tracking-tight text-foreground">
+        Hi, I'm Lisa.
       </h2>
       
       <p className="text-xs sm:text-sm text-muted-foreground mt-2 max-w-md leading-relaxed">
-        Your virtualization layer is fully online. Memory registers are synchronized. Ask a question or choose an execution path below.
+        I can help you understand your email, work with your files, research information, and get things done.
       </p>
 
       {/* Suggested prompts grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mt-8">
-        {suggestions.map((prompt, idx) => (
-          <button
-            key={idx}
-            onClick={() => onSelectPrompt(prompt)}
-            className="p-3 text-left bg-secondary/25 hover:bg-secondary/60 border border-border/60 hover:border-primary/30 rounded-xl transition-all duration-300 group outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer flex gap-2.5 items-start"
-          >
-            <Compass className="h-4 w-4 text-primary/70 group-hover:scale-110 transition-transform mt-0.5 shrink-0" />
-            <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors leading-relaxed line-clamp-2">
-              {prompt}
-            </span>
-          </button>
-        ))}
+        {suggestions.map((item, idx) => {
+          const Icon = item.icon
+          return (
+            <button
+              key={idx}
+              onClick={() => onSelectPrompt(item.text)}
+              className="p-3.5 text-left bg-secondary/20 hover:bg-secondary/50 border border-border/60 hover:border-primary/40 rounded-xl transition-all duration-200 group outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer flex gap-3 items-start shadow-xs"
+            >
+              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:scale-105 transition-transform mt-0.5">
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="space-y-0.5 min-w-0">
+                <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors leading-snug">
+                  {item.text}
+                </p>
+                <p className="text-[11px] text-muted-foreground line-clamp-1">
+                  {item.desc}
+                </p>
+              </div>
+            </button>
+          )
+        })}
       </div>
-
-      {/* Quick actions */}
-      <button
-        onClick={onNewChat}
-        className="mt-8 px-4 py-2 border border-primary/35 bg-primary/10 hover:bg-primary text-foreground hover:text-primary-foreground font-semibold text-xs rounded-xl cursor-pointer transition-all flex items-center gap-2 shadow-md shadow-primary/5 focus-visible:ring-1 focus-visible:ring-primary outline-none"
-      >
-        <MessageSquarePlus className="h-4 w-4" />
-        Initialize Conversation
-      </button>
     </div>
   )
 }

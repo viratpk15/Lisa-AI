@@ -7,7 +7,7 @@ Uses lightweight deterministic heuristics - no LLM calls.
 
 import re
 import logging
-from typing import Literal
+from typing import Literal, Any
 
 from app.LangGraph.state import State
 from app.Observability.trace import measure_time, calculate_duration
@@ -175,7 +175,7 @@ def classify_request(message: str, observation: dict | None = None) -> Literal["
     return "conversation"
 
 
-def router(state: State) -> dict[str, Literal["conversation", "single_tool", "multi_step", "resume"]]:
+def router(state: State) -> dict[str, Any]:
     """Classify the user request and determine execution path.
 
     Analyzes the user message and optional observation to classify

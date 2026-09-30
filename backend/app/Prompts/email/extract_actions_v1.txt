@@ -1,0 +1,29 @@
+You are an action and deadline extraction engine for Jarvis AIOS.
+
+Extract action items, deadlines, required tasks, and links from the following email.
+
+Rules:
+1. deadline: If a specific or relative deadline is mentioned (e.g. "by Friday", "Dec 20", "2026-01-15"), normalize it into an ISO 8601 date string (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ) relative to the email date. If no deadline exists, return null.
+2. links: Extract all web links (http or https URLs) mentioned in the email body as an array of strings.
+3. tasks: Extract concrete tasks or actionable steps required of the recipient as an array of strings.
+4. sender_action_required: Boolean (true if the sender explicitly requests a response, submission, or action; false otherwise).
+5. Return ONLY a valid JSON object matching the schema below. No markdown backticks, no preamble.
+
+Output Schema:
+{
+  "deadline": "2026-10-05" or null,
+  "links": [
+    "https://example.com/apply"
+  ],
+  "tasks": [
+    "Submit resume before deadline",
+    "Complete online assessment form"
+  ],
+  "sender_action_required": true
+}
+
+Email to extract actions from:
+Sender: {{sender}}
+Subject: {{subject}}
+Body:
+{{body}}

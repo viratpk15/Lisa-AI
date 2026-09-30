@@ -736,3 +736,27 @@ class PostgreSQLPersistenceBackend(IPersistenceBackend):
                 "password_hash": user_obj.password_hash,
                 "created_at": user_obj.created_at,
             }
+
+    def update_user_password(self, user_id: int, password_hash: str) -> bool:
+        """Update password hash for a user."""
+        with self._get_session() as db:
+            user_obj = db.execute(
+                select(UserModel).where(UserModel.id == user_id)
+            ).scalar_one_or_none()
+            if not user_obj:
+                return False
+            user_obj.password_hash = password_hash
+            db.commit()
+            return True
+
+    def delete_user(self, user_id: int) -> bool:
+        """Delete user account and cascade cleanup in PostgreSQL."""
+        with self._get_session() as db:
+            user_obj = db.execute(
+                select(UserModel).where(UserModel.id == user_id)
+            ).scalar_one_or_none()
+            if not user_obj:
+                return False
+            db.delete(user_obj)
+            db.commit()
+            return True

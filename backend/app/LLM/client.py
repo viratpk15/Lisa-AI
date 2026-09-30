@@ -29,6 +29,11 @@ class LLMClient:
         """Get underlying router object for LangChain compatibility."""
         return self
 
+    @property
+    def last_active_model(self) -> str:
+        """Report the last active model used for inference."""
+        return getattr(llm_router, "last_active_model", "Groq · llama-3.1-8b-instant")
+
     def invoke(self, input_data: Any, **kwargs: Any) -> Any:
         """Synchronously invoke LLM via stateless router with recoverable failover."""
         if self._custom_provider:

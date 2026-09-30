@@ -10,6 +10,7 @@ interface Message {
   role: "user" | "assistant" | "system"
   content: string
   timestamp: string
+  model?: string
 }
 
 interface MessageBubbleProps {
@@ -72,7 +73,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onRegener
 
         {/* Action icons bar for assistant messages */}
         {!isUser && (
-          <div className="flex items-center gap-2 pl-4 text-[10px] font-mono text-muted-foreground/60 select-none">
+          <div className="flex items-center gap-2 pl-4 text-[10px] font-mono text-muted-foreground/70 select-none">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary/60 text-foreground/80 border border-border/50 font-mono text-[10px] leading-tight">
+              <Sparkles className="h-2.5 w-2.5 text-primary/70 shrink-0" />
+              <span>{message.model || "Groq · llama-3.1-8b-instant"}</span>
+            </span>
+            <span>•</span>
             <span>{message.timestamp}</span>
             <span>•</span>
             <div className="flex items-center gap-0.5">

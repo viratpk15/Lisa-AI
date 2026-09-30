@@ -97,7 +97,23 @@ class QueryIntentClassifier:
             return QueryIntent.TOOL
 
         # Date/time
-        if any(kw in msg_lower for kw in ["what is the date", "what time is it", "clock", "today's date", "current time"]):
+        datetime_keywords = [
+            "what is the date",
+            "what is today's date",
+            "what's today's date",
+            "what is the time",
+            "what's the time",
+            "what time is it",
+            "tell me the time",
+            "tell me the date",
+            "current time",
+            "current date",
+            "today's date",
+            "clock",
+            "time right now",
+            "time is it right now",
+        ]
+        if any(kw in msg_lower for kw in datetime_keywords) or bool(re.search(r"\bwhat('?s| is) (the )?(current )?(date|time)\b", msg_lower)):
             logger.info("[KNOWLEDGE-ROUTER] Query='%s' -> TOOL (DateTime)", message[:50])
             return QueryIntent.TOOL
 
@@ -106,6 +122,47 @@ class QueryIntentClassifier:
             any(op in message for op in ["+", "*", "/", "^"]) and any(c.isdigit() for c in message)
         ):
             logger.info("[KNOWLEDGE-ROUTER] Query='%s' -> TOOL (Math)", message[:50])
+            return QueryIntent.TOOL
+
+        # Travel Planner
+        travel_keywords = [
+            "plan a trip",
+            "plan trip",
+            "travel to",
+            "trip to",
+            "flight from",
+            "flights from",
+            "hotel in",
+            "hotels in",
+            "itinerary for",
+            "vacation in",
+            "holiday to",
+        ]
+        if any(kw in msg_lower for kw in travel_keywords) or bool(re.search(r"\bplan (a )?(\d+[- ])?(day )?trip\b", msg_lower)):
+            logger.info("[KNOWLEDGE-ROUTER] Query='%s' -> TOOL (Travel)", message[:50])
+            return QueryIntent.TOOL
+
+        # Jobs & Internships
+        job_keywords = [
+            "find internship",
+            "find internships",
+            "find job",
+            "find jobs",
+            "search jobs",
+            "search internships",
+            "ml internship",
+            "ai internship",
+            "software internship",
+            "remote internship",
+            "jobs matching my resume",
+            "internships matching my resume",
+            "what skills i'm missing",
+            "what skills am i missing",
+            "which of these jobs fits my skills",
+            "analyze my resume against",
+        ]
+        if any(kw in msg_lower for kw in job_keywords) or bool(re.search(r"\b(find|search|show me) (remote |entry-level |ai |ml |software )*(jobs|internships)\b", msg_lower)):
+            logger.info("[KNOWLEDGE-ROUTER] Query='%s' -> TOOL (Jobs)", message[:50])
             return QueryIntent.TOOL
 
         # ── 3. LIVE SEARCH INTENT ─────────────────────────────────────────────
@@ -119,10 +176,6 @@ class QueryIntentClassifier:
 
         # Layer 2: Time-sensitive general queries (latest products, versions, news, events)
         # These require current information and must NOT be answered from stale LLM knowledge.
-        #
-        # Strategy: detect a strong RECENCY SIGNAL combined with a TIME-SENSITIVE SUBJECT.
-        # We use a scoring approach — recency words are weighted, subject indicators multiply
-        # the confidence. A combined score > threshold → LIVE_SEARCH.
         _RECENCY_SIGNALS: dict[str, int] = {
             "latest ":     5,
             "latest":      5,
@@ -158,10 +211,12 @@ class QueryIntentClassifier:
 
         # Subject categories indicating the answer is time-sensitive
         _TIME_SENSITIVE_SUBJECTS: dict[str, int] = {
-            # Technology products
+            # Technology products & companies
+            "nvidia":      5, "outbox":      5, "outbox labs": 5,
             "iphone":      5, "macbook":     5, "ipad":       5, "apple":      3,
             "galaxy":      5, "pixel":       5, "android":    4, "ios":        4,
-            "windows":     4, "macos":       4,
+            "windows":     4, "macos":       4, "tesla":      4, "google":     4,
+            "microsoft":   4, "amazon":      4, "meta":       4,
             "gpu":         5, "cpu":         5, "chip":       4, "processor":  4,
             "laptop":      3, "phone":       3, "tablet":     3, "device":     2,
             # Software / programming
@@ -177,6 +232,7 @@ class QueryIntentClassifier:
             "ipl":         5, "score":       4, "match":      3, "tournament": 3,
             "champions league": 5, "world cup": 5, "standings": 4,
             # Finance (non-structured — supplements Layer 1)
+            "bitcoin":     5, "crypto":      5, "btc":        5,
             "interest rate": 5, "inflation":  4, "gdp":       4, "cpi":       4,
             "market":      3, "nasdaq":      4, "dow jones":  4, "s&p":        4,
             # News / people
@@ -190,7 +246,7 @@ class QueryIntentClassifier:
         # Threshold: a strong recency word alone (score ≥ 5) OR a weaker recency word
         # combined with an identifiable time-sensitive subject (combined ≥ 7) routes to search.
         _LIVE_THRESHOLD = 7
-        _RECENCY_ALONE_THRESHOLD = 5  # "latest" or "today" alone with any noun context
+        _RECENCY_ALONE_THRESHOLD = 5
 
         is_time_sensitive = (
             recency_score >= _RECENCY_ALONE_THRESHOLD and subject_score >= 2
@@ -205,7 +261,19 @@ class QueryIntentClassifier:
             )
             return QueryIntent.LIVE_SEARCH
 
-        # Explicit live search phrases (catch-all for patterns not covered above)
+        # Explicit live search prefixes and phrases
+        search_prefixes = (
+            "search for ",
+            "search about ",
+            "search the web for ",
+            "search online for ",
+            "search web for ",
+            "look up ",
+            "find info on ",
+            "find information about ",
+            "find details on ",
+            "find details about ",
+        )
         live_search_explicit = [
             "bitcoin price",
             "crypto price",
@@ -217,13 +285,20 @@ class QueryIntentClassifier:
             "today's headlines",
             "search online for",
             "search web for",
+            "company address",
+            "headquarters of",
+            "details and company address",
+            "company details",
+            "latest news about",
+            "news about",
         ]
-        if any(kw in msg_lower for kw in live_search_explicit):
-            logger.info("[KNOWLEDGE-ROUTER] Query='%s' -> LIVE_SEARCH (Explicit Phrase)", message[:50])
+        if any(msg_lower.startswith(p) for p in search_prefixes) or any(kw in msg_lower for kw in live_search_explicit):
+            logger.info("[KNOWLEDGE-ROUTER] Query='%s' -> LIVE_SEARCH (Explicit Search Pattern)", message[:50])
             return QueryIntent.LIVE_SEARCH
 
         # ── 4. DOCUMENT QA INTENT ─────────────────────────────────────────────
-        # Triggered ONLY when explicit document indicators exist or files are attached.
+        # Triggered when explicit document indicators exist, files are attached,
+        # or queries explicitly reference "Ask Lisa about..." / specific documents.
         doc_explicit_keywords = [
             "summarize this pdf",
             "summarize the pdf",
@@ -255,6 +330,16 @@ class QueryIntentClassifier:
             "attached paper",
             "attached file",
             "the attached",
+            "ask lisa about",
+            "in my files",
+            "in the files",
+            "from my documents",
+            "from my files",
+            "search files for",
+            "search documents for",
+            "project codename",
+            "aurora-17",
+            "aurora 17",
         ]
         doc_noun_indicators = [
             "pdf",
@@ -272,8 +357,12 @@ class QueryIntentClassifier:
             any(ind in msg_lower for ind in doc_noun_indicators)
             and any(verb in msg_lower for verb in ["read", "summarize", "search", "explain", "find", "show", "check", "parse", "extract", "content", "what is in", "what does"])
         )
+        has_file_reference = bool(
+            re.search(r'["\'].+?\.(txt|pdf|md|docx|doc|csv|json)["\']', message)
+            or re.search(r'\b(aurora-17|aurora 17)\b', msg_lower)
+        )
 
-        if has_attachment or has_active_doc or is_explicit_doc_query:
+        if has_attachment or has_active_doc or is_explicit_doc_query or has_file_reference:
             logger.info("[KNOWLEDGE-ROUTER] Query='%s' -> DOCUMENT_QA (Explicit Doc Request / Attachment)", message[:50])
             return QueryIntent.DOCUMENT_QA
 

@@ -175,8 +175,8 @@ def trigger_memory_extraction(
     user_id = current_user.get("user_id")
     messages = repository.get_session_messages(db, session_id=session_id)
     # Convert MessageModel to BaseMessage format for extractor
-    from langchain_core.messages import HumanMessage, AIMessage
-    langchain_msgs = [
+    from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
+    langchain_msgs: List[BaseMessage] = [
         HumanMessage(content=m.content) if m.message_type == "human" else AIMessage(content=m.content)
         for m in messages
     ]
@@ -215,7 +215,7 @@ def get_vector_embeddings(
 ):
     """Fetch 2D vector projection map for embedding visualization."""
     points = manager.get_vector_projections(db, session_id=session_id)
-    return schemas.VectorProjectionResponse(session_id=session_id, points=points)
+    return schemas.VectorProjectionResponse(session_id=session_id, points=[schemas.VectorPoint(**p) for p in points])
 
 
 @router.post("/recall", response_model=schemas.RecallResultsResponse)

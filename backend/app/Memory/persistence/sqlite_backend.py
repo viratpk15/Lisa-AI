@@ -905,3 +905,32 @@ class SQLitePersistenceBackend(IPersistenceBackend):
                 "password_hash": row[2],
                 "created_at": row[3],
             }
+
+    def update_user_password(self, user_id: int, password_hash: str) -> bool:
+        """Update password hash for a user."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE users SET password_hash = ? WHERE id = ?",
+                (password_hash, user_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def delete_user(self, user_id: int) -> bool:
+        """Delete user account and cascade cleanup related records."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # Clean up sessions owned by user
+            cursor.execute("SELECT session_id FROM sessions WHERE user_id = ?", (user_id,))
+            session_ids = [row[0] for row in cursor.fetchall()]
+            for s_id in session_ids:
+                cursor.execute("DELETE FROM messages WHERE session_id = ?", (s_id,))
+                cursor.execute("DELETE FROM summaries WHERE session_id = ?", (s_id,))
+                cursor.execute("DELETE FROM message_embeddings WHERE session_id = ?", (s_id,))
+                cursor.execute("DELETE FROM summary_embeddings WHERE session_id = ?", (s_id,))
+                cursor.execute("DELETE FROM execution_state WHERE session_id = ?", (s_id,))
+            cursor.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            conn.commit()
+            return cursor.rowcount > 0

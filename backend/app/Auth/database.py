@@ -89,6 +89,29 @@ class UserDatabase:
         """
         return self.persistence.get_user_by_id(user_id)
 
+    def update_user_password(self, user_id: int, password_hash: str) -> bool:
+        """Update password hash for a user.
+
+        Args:
+            user_id: Database ID of user.
+            password_hash: New bcrypt hash.
+
+        Returns:
+            True if updated, False otherwise.
+        """
+        return self.persistence.update_user_password(user_id, password_hash)
+
+    def delete_user(self, user_id: int) -> bool:
+        """Delete user account by ID.
+
+        Args:
+            user_id: Database ID of user.
+
+        Returns:
+            True if deleted, False otherwise.
+        """
+        return self.persistence.delete_user(user_id)
+
 
 # Global database instance
 user_db = UserDatabase()

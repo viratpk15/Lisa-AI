@@ -96,7 +96,7 @@ class TerminalTool(Tool):
 
         return tokens
 
-    def execute(self, command: str, **kwargs: Any) -> Dict[str, Any]:
+    def execute(self, command: str = "", *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """
         Execute command synchronously in a subprocess.
         """

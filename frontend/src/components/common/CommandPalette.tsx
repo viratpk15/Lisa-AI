@@ -3,19 +3,27 @@ import { useNavigate } from "react-router"
 import { motion } from "framer-motion"
 import {
   Search,
-  LayoutDashboard,
-  FolderOpen,
+  Home,
   Bot,
   Brain,
   ToyBrick,
   Settings,
   RefreshCw,
-  Play,
-  Terminal,
-  Columns,
+  FolderOpen,
   Sparkles,
-  SearchCode
+  Mail,
+  PieChart,
+  GitBranch,
+  Database,
+  Server,
+  Key,
+  Rocket,
+  Activity,
+  FileCode,
+  Plane,
+  Briefcase
 } from "lucide-react"
+import { syncEmailApi } from "@/features/Email/api"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { dialogVariants, commandPaletteItemVariants } from "@/lib/motion"
 import { cn } from "@/lib/utils"
@@ -41,23 +49,29 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   const listRef = useRef<HTMLDivElement>(null)
 
   const commands: CommandItem[] = [
-    // Navigation
-    { id: "nav-dash", name: "Go to Dashboard", category: "Navigation", shortcut: "G D", icon: LayoutDashboard, action: () => { navigate("/dashboard"); onClose(); } },
-    { id: "nav-work", name: "Go to Workspaces", category: "Navigation", shortcut: "G W", icon: FolderOpen, action: () => { navigate("/workspace"); onClose(); } },
-    { id: "nav-agent", name: "Go to AI Agents", category: "Navigation", shortcut: "G A", icon: Bot, action: () => { navigate("/agents"); onClose(); } },
-    { id: "nav-mem", name: "Go to Memory Manager", category: "Navigation", shortcut: "G M", icon: Brain, action: () => { navigate("/memory"); onClose(); } },
-    { id: "nav-tool", name: "Go to Tool Registry", category: "Navigation", shortcut: "G T", icon: ToyBrick, action: () => { navigate("/tools"); onClose(); } },
-    { id: "nav-set", name: "Go to Settings", category: "Navigation", shortcut: "G S", icon: Settings, action: () => { navigate("/settings"); onClose(); } },
-    
-    // System Actions
-    { id: "sys-sync", name: "Sync Vector Database", category: "System", shortcut: "⌘ S", icon: RefreshCw, action: () => { console.log("Sync vectors"); onClose(); } },
-    { id: "sys-start", name: "Start Code Orchestrator", category: "System", shortcut: "⌥ P", icon: Play, action: () => { console.log("Start agent"); onClose(); } },
-    { id: "sys-kernel", name: "Restart AIOS Kernel", category: "System", shortcut: "⇧ K", icon: Terminal, action: () => { console.log("Restart OS"); onClose(); } },
-    
-    // Commands/Controls
-    { id: "cmd-sidebar", name: "Toggle Left Sidebar", category: "Controls", shortcut: "⌘ B", icon: Columns, action: () => { console.log("Toggle sidebar"); onClose(); } },
-    { id: "cmd-search", name: "Find in Files", category: "Controls", shortcut: "⌘ F", icon: SearchCode, action: () => { console.log("Find files"); onClose(); } },
-    { id: "cmd-prompt", name: "Configure System Prompt", category: "Controls", shortcut: "⌥ P", icon: Sparkles, action: () => { navigate("/settings"); onClose(); } }
+    // Product
+    { id: "prod-home", name: "Home", category: "Product", shortcut: "G H", icon: Home, action: () => { navigate("/"); onClose(); } },
+    { id: "prod-assistant", name: "Assistant", category: "Product", shortcut: "G A", icon: Bot, action: () => { navigate("/assistant"); onClose(); } },
+    { id: "prod-email", name: "Email", category: "Product", shortcut: "G E", icon: Mail, action: () => { navigate("/email"); onClose(); } },
+    { id: "prod-files", name: "Files", category: "Product", shortcut: "G F", icon: FolderOpen, action: () => { navigate("/files"); onClose(); } },
+    { id: "prod-travel", name: "Travel Planner", category: "Product", shortcut: "G T", icon: Plane, action: () => { navigate("/travel"); onClose(); } },
+    { id: "prod-jobs", name: "Jobs & Internships", category: "Product", shortcut: "G J", icon: Briefcase, action: () => { navigate("/jobs"); onClose(); } },
+    { id: "prod-settings", name: "Settings", category: "Product", shortcut: "G S", icon: Settings, action: () => { navigate("/settings"); onClose(); } },
+    { id: "prod-email-sync", name: "Sync Email Now", category: "Product", shortcut: "⌥ E", icon: RefreshCw, action: () => { syncEmailApi().catch(() => {}); onClose(); } },
+    { id: "prod-email-digest", name: "Open Daily Digest", category: "Product", shortcut: "G D", icon: PieChart, action: () => { navigate("/email?tab=digest"); onClose(); } },
+
+    // Developer / AIOS
+    { id: "dev-agents", name: "Agents", category: "Developer / AIOS", icon: Bot, action: () => { navigate("/settings/developer/core/agents"); onClose(); } },
+    { id: "dev-tools", name: "Tools", category: "Developer / AIOS", icon: ToyBrick, action: () => { navigate("/settings/developer/core/tools"); onClose(); } },
+    { id: "dev-workflows", name: "Workflows", category: "Developer / AIOS", icon: GitBranch, action: () => { navigate("/settings/developer/core/workflows"); onClose(); } },
+    { id: "dev-memory", name: "Memory", category: "Developer / AIOS", icon: Brain, action: () => { navigate("/settings/developer/knowledge/memory"); onClose(); } },
+    { id: "dev-rag", name: "RAG", category: "Developer / AIOS", icon: Database, action: () => { navigate("/settings/developer/knowledge/rag"); onClose(); } },
+    { id: "dev-models", name: "Models", category: "Developer / AIOS", icon: Sparkles, action: () => { navigate("/settings/developer/ai/models"); onClose(); } },
+    { id: "dev-prompts", name: "Prompts", category: "Developer / AIOS", icon: FileCode, action: () => { navigate("/settings/developer/ai/prompts"); onClose(); } },
+    { id: "dev-mcp", name: "MCP", category: "Developer / AIOS", icon: Server, action: () => { navigate("/settings/developer/integrations/mcp"); onClose(); } },
+    { id: "dev-connections", name: "Connections", category: "Developer / AIOS", icon: Key, action: () => { navigate("/settings/developer/integrations/connections"); onClose(); } },
+    { id: "dev-deployment", name: "Deployment", category: "Developer / AIOS", icon: Rocket, action: () => { navigate("/settings/developer/infrastructure/deployment"); onClose(); } },
+    { id: "dev-observability", name: "Observability", category: "Developer / AIOS", icon: Activity, action: () => { navigate("/settings/developer/infrastructure/observability"); onClose(); } },
   ]
 
   // Filter commands
@@ -172,7 +186,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
           animate="animate"
           exit="exit"
           variants={dialogVariants}
-          className="flex flex-col h-[400px] w-full"
+          className="flex flex-col h-100 w-full"
         >
           {/* Search box */}
           <div className="flex items-center gap-3 px-4 border-b border-border/80 h-14 shrink-0">
@@ -213,7 +227,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
               <span className="flex items-center gap-1"><span className="border border-border/60 bg-secondary px-1 py-0.5 rounded">↑↓</span> Navigate</span>
               <span className="flex items-center gap-1"><span className="border border-border/60 bg-secondary px-1.5 py-0.5 rounded">↵</span> Select</span>
             </div>
-            <span>Jarvis AIOS Command Prompt</span>
+            <span>Lisa AIOS Command Prompt</span>
           </div>
         </motion.div>
       </DialogContent>

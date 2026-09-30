@@ -20,6 +20,14 @@ from app.Tools.terminal_tool import TerminalTool
 from app.Tools.git_tool import GitTool
 from app.Tools.web_search_tool import WebSearchTool
 from app.Tools.browser_tool import BrowserTool
+from app.Tools.email.sync_tool import EmailSyncTool
+from app.Tools.email.verify_tool import EmailVerifySenderTool
+from app.Tools.email.classifier import EmailClassifierTool
+from app.Tools.email.summarizer import EmailSummarizerTool
+from app.Tools.email.action_extractor import EmailActionExtractorTool
+from app.Tools.email.digest import EmailDigestTool
+from app.Tools.travel_planner_tool import TravelPlannerTool
+from app.Tools.jobs_finder_tool import JobsFinderTool
 
 
 class ToolRegistry:
@@ -41,6 +49,14 @@ class ToolRegistry:
         self.register(GitTool())
         self.register(WebSearchTool())
         self.register(BrowserTool())
+        self.register(EmailSyncTool())
+        self.register(EmailVerifySenderTool())
+        self.register(EmailClassifierTool())
+        self.register(EmailSummarizerTool())
+        self.register(EmailActionExtractorTool())
+        self.register(EmailDigestTool())
+        self.register(TravelPlannerTool())
+        self.register(JobsFinderTool())
 
     def register(self, tool: Tool) -> None:
         """Register a tool instance."""

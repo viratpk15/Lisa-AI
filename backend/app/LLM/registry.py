@@ -10,6 +10,8 @@ import logging
 from typing import Dict, Type
 from app.LLM.base import BaseLLMProvider
 from app.LLM.providers.groq_provider import GroqProvider
+from app.LLM.providers.nvidia_provider import NvidiaProvider
+from app.LLM.providers.mistral_provider import MistralProvider
 from app.LLM.providers.ollama_provider import OllamaProvider
 
 logger = logging.getLogger(__name__)
@@ -20,8 +22,13 @@ class ProviderRegistry:
 
     def __init__(self):
         self._registry: Dict[str, Type[BaseLLMProvider]] = {}
-        # Register default initial drivers
+        # Register locked default drivers
         self.register("groq", GroqProvider)
+        self.register("nvidia", NvidiaProvider)
+        self.register("nvidia-nim", NvidiaProvider)
+        self.register("nim", NvidiaProvider)
+        self.register("mistral", MistralProvider)
+        self.register("mistralai", MistralProvider)
         self.register("ollama", OllamaProvider)
 
     def register(self, provider_name: str, provider_cls: Type[BaseLLMProvider]) -> None:

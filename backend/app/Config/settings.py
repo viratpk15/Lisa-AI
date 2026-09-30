@@ -98,3 +98,43 @@ SEARCH_MAX_RESULTS: int = int(os.getenv("SEARCH_MAX_RESULTS", "5"))
 
 # Minimum confidence threshold (0.0 to 1.0) required to answer RAG document queries
 RAG_MIN_CONFIDENCE: float = float(os.getenv("RAG_MIN_CONFIDENCE", "0.20"))
+
+# ============================================================
+# Google / Gmail OAuth Configuration
+# ============================================================
+GOOGLE_CLIENT_ID: str | None = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET: str | None = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_REDIRECT_URI: str = os.getenv(
+    "GOOGLE_REDIRECT_URI", "http://localhost:8000/api/v1/auth/google/callback"
+)
+
+# ============================================================
+# LLM Subsystem & Environment Configuration
+# ============================================================
+ENVIRONMENT: str = os.getenv("ENVIRONMENT", os.getenv("APP_ENV", "development")).strip().lower()
+
+GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
+GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_BASE_URL: str = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+
+NVIDIA_API_KEY: str | None = os.getenv("NVIDIA_API_KEY") or os.getenv("NVIDIA_NIM_API_KEY")
+NVIDIA_MODEL: str = os.getenv("NVIDIA_MODEL", os.getenv("NVIDIA_NIM_MODEL", "meta/llama-3.3-70b-instruct"))
+NVIDIA_BASE_URL: str = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
+
+MISTRAL_API_KEY: str | None = os.getenv("MISTRAL_API_KEY")
+MISTRAL_MODEL: str = os.getenv("MISTRAL_MODEL", "mistral-large-latest")
+MISTRAL_BASE_URL: str = os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1")
+
+# Ollama local development-only fallback (never active in production)
+OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+
+# ============================================================
+# Job & Internship Finder Subsystem (India & Global)
+# ============================================================
+ADZUNA_APP_ID: str | None = os.getenv("ADZUNA_APP_ID")
+ADZUNA_APP_KEY: str | None = os.getenv("ADZUNA_APP_KEY")
+RAPIDAPI_KEY: str | None = os.getenv("RAPIDAPI_KEY") or os.getenv("JSEARCH_API_KEY")
+JSEARCH_API_KEY: str | None = os.getenv("JSEARCH_API_KEY") or os.getenv("RAPIDAPI_KEY")
+JOOBLE_API_KEY: str | None = os.getenv("JOOBLE_API_KEY")
+

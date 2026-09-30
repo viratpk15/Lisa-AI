@@ -26,7 +26,7 @@ class ToolAction(BaseModel):
 
     type: str = Field("tool", pattern="^tool$")
     tool: str = Field(..., min_length=1, description="The registered tool name.")
-    arguments: ToolArguments = Field(default_factory=ToolArguments)
+    arguments: ToolArguments = Field(default_factory=lambda: ToolArguments(expression=None, path=None, code=None))
 
 
 class FinalAction(BaseModel):
@@ -45,5 +45,5 @@ class ParsedAction(BaseModel):
 
     action_type: str = Field(..., alias="type")
     tool: Optional[str] = Field(None)
-    arguments: ToolArguments = Field(default_factory=ToolArguments)
+    arguments: ToolArguments = Field(default_factory=lambda: ToolArguments(expression=None, path=None, code=None))
     response: Optional[str] = Field(None)

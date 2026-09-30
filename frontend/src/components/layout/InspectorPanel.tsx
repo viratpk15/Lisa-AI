@@ -2,30 +2,33 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Sparkles,
-  Terminal,
-  Activity,
-  Compass,
-  Database,
-  SearchCode,
-  Layers,
   PanelRightClose,
+  Mail,
+  Info,
+  ShieldCheck,
+  ShieldAlert,
   FileText,
-  Bookmark
+  ListTodo,
+  Bot
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { panelVariants } from "@/lib/motion"
+import { useInspectorStore } from "@/features/Workspace/inspectorStore"
 
 interface InspectorPanelProps {
   isOpen: boolean
   onToggle: () => void
 }
 
-type TabType = "thoughts" | "tools" | "debugger" | "context" | "memory" | "files" | "references"
+type TabType = "context" | "email"
 
 export const InspectorPanel: React.FC<InspectorPanelProps> = ({ isOpen, onToggle }) => {
-  const [activeTab, setActiveTab] = useState<TabType>("thoughts")
+  const [activeTab, setActiveTab] = useState<TabType>("context")
   const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200)
+
+  const aiContext = useInspectorStore((s) => s.aiContext)
+  const emailContext = useInspectorStore((s) => s.emailContext)
 
   // Track window resizing for responsive overlay rendering
   useEffect(() => {
@@ -35,209 +38,179 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({ isOpen, onToggle
   }, [])
 
   const tabs = [
-    { id: "context", name: "Context", icon: Compass },
-    { id: "memory", name: "Memory", icon: Database },
-    { id: "files", name: "Files", icon: FileText },
-    { id: "references", name: "References", icon: Bookmark },
-    { id: "thoughts", name: "AI Thoughts", icon: Sparkles },
-    { id: "tools", name: "Tool Output", icon: SearchCode },
-    { id: "debugger", name: "Debugger", icon: Activity }
+    { id: "context" as const, name: "AI Context", icon: Sparkles },
+    { id: "email" as const, name: "Email Context", icon: Mail },
   ]
 
   const renderTabContent = () => {
     switch (activeTab) {
       case "context":
-        return (
-          <div className="space-y-4">
-            <div className="p-3 bg-secondary/30 rounded-lg border border-border/50">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono mb-2">Active Session</h4>
-              <div className="space-y-1.5 text-xs font-mono">
-                <div className="flex justify-between"><span className="text-muted-foreground">Session ID:</span> <span className="text-foreground">ses_92f8a1</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Model Bind:</span> <span className="text-primary font-medium">Gemini 2.5 Flash</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Workspace:</span> <span className="text-foreground">Personal Cloud AI</span></div>
+        if (!aiContext) {
+          return (
+            <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground space-y-3">
+              <div className="p-3 rounded-full bg-secondary/50 border border-border/40">
+                <Sparkles className="h-6 w-6 text-primary/70" />
               </div>
-            </div>
-            <div className="p-3 bg-secondary/30 rounded-lg border border-border/50">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono mb-2">Contextual Weights</h4>
-              <div className="space-y-1.5 text-xs">
-                <div className="flex justify-between text-muted-foreground"><span>System prompt:</span> <span>1.2k tokens</span></div>
-                <div className="flex justify-between text-muted-foreground"><span>Conversation history:</span> <span>3.4k tokens</span></div>
-                <div className="flex justify-between text-muted-foreground"><span>Tool declarations:</span> <span>844 tokens</span></div>
-              </div>
-            </div>
-          </div>
-        )
-      case "memory":
-        return (
-          <div className="space-y-3 font-mono text-xs">
-            <div className="p-3 bg-secondary/30 rounded-lg border border-border/50">
-              <div className="flex items-center gap-2 text-primary mb-2">
-                <Layers className="h-4 w-4" />
-                <span className="font-semibold text-xs uppercase tracking-wider">Semantic Store</span>
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between"><span className="text-muted-foreground">Vector Dimension:</span> <span className="text-foreground">1536 (Normalized)</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Active Cache:</span> <span className="text-foreground">1,824 Vectors</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Dirty Nodes:</span> <span className="text-amber-500">0 pending sync</span></div>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold">Recent Memories Cached</span>
-              <div className="space-y-1 p-2 bg-secondary/20 rounded border border-border/30 text-[10px]">
-                <div className="text-primary truncate">key: usr_settings_language</div>
-                <div className="text-muted-foreground text-[9px]">"value": "TypeScript/React 19"</div>
-              </div>
-              <div className="space-y-1 p-2 bg-secondary/20 rounded border border-border/30 text-[10px]">
-                <div className="text-primary truncate">key: last_workspace_sync</div>
-                <div className="text-muted-foreground text-[9px]">"value": "1784902573827"</div>
-              </div>
-            </div>
-          </div>
-        )
-      case "thoughts":
-        return (
-          <div className="space-y-3 font-mono text-xs">
-            <div className="flex items-center justify-between text-primary font-semibold text-[10px] uppercase border-b border-border/40 pb-1.5">
-              <span>Reasoning Step</span>
-              <span>Inference Cost</span>
-            </div>
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <span className="text-primary">[1]</span>
-                <div>
-                  <div className="font-semibold text-foreground">Query analysis</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Identified navigation intent to dashboard panel.</div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <span className="text-primary">[2]</span>
-                <div>
-                  <div className="font-semibold text-foreground">File structure lookup</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Scanned filesystem routes matching search keys.</div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <span className="text-primary">[3]</span>
-                <div>
-                  <div className="font-semibold text-foreground">Tool binding</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Invoked local directory listing API tool.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )
-      case "files":
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground border-b border-border/40 pb-1.5 uppercase font-semibold">
-              <span>Attached File</span>
-              <span>Size</span>
-            </div>
-            <div className="space-y-2 font-mono text-xs">
-              <div className="p-2.5 bg-secondary/35 hover:bg-secondary/65 border border-border/50 rounded-lg flex items-center justify-between gap-3 group transition-colors">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="h-4 w-4 text-primary shrink-0" />
-                  <span className="truncate font-semibold text-foreground">src/App.tsx</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground shrink-0">2.4 KB</span>
-              </div>
-              <div className="p-2.5 bg-secondary/35 hover:bg-secondary/65 border border-border/50 rounded-lg flex items-center justify-between gap-3 group transition-colors">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="h-4 w-4 text-primary shrink-0" />
-                  <span className="truncate font-semibold text-foreground">src/main.tsx</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground shrink-0">1.1 KB</span>
-              </div>
-              <div className="p-2.5 bg-secondary/35 hover:bg-secondary/65 border border-border/50 rounded-lg flex items-center justify-between gap-3 group transition-colors">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="h-4 w-4 text-primary shrink-0" />
-                  <span className="truncate font-semibold text-foreground">AppShell.tsx</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground shrink-0">22.8 KB</span>
-              </div>
-              <div className="p-2.5 bg-secondary/35 hover:bg-secondary/65 border border-border/50 rounded-lg flex items-center justify-between gap-3 group transition-colors">
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText className="h-4 w-4 text-primary shrink-0" />
-                  <span className="truncate font-semibold text-foreground">package.json</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground shrink-0">976 B</span>
-              </div>
-            </div>
-          </div>
-        )
-      case "references":
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground border-b border-border/40 pb-1.5 uppercase font-semibold">
-              <span>Active Reference Context</span>
-              <span>Weight</span>
-            </div>
-            <div className="space-y-2 text-xs">
-              <div className="p-2.5 bg-secondary/35 border border-border/50 rounded-lg flex flex-col gap-1 font-mono">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-primary font-semibold truncate text-[11px]">docs/06_MEMORY.md</span>
-                  <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1 py-0.5 rounded leading-none">CRITICAL</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground">Local schema for context vectors managers.</span>
-              </div>
-              <div className="p-2.5 bg-secondary/35 border border-border/50 rounded-lg flex flex-col gap-1 font-mono">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-primary font-semibold truncate text-[11px]">.agents/AGENTS.md</span>
-                  <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1 py-0.5 rounded leading-none">CRITICAL</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground">Standard AI Operating System constitution loaded.</span>
-              </div>
-              <div className="p-2.5 bg-secondary/35 border border-border/50 rounded-lg flex flex-col gap-1 font-mono">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-primary font-semibold truncate text-[11px]">web: react-19-motion</span>
-                  <span className="text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1 py-0.5 rounded leading-none">HIGH</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground">Crawl summary of standard framer-motion transitions.</span>
-              </div>
-            </div>
-          </div>
-        )
-      case "tools":
-        return (
-          <div className="space-y-3">
-            <div className="p-3 bg-secondary/30 rounded-lg border border-border/50 font-mono text-xs">
-              <div className="flex justify-between items-center mb-2 border-b border-border/40 pb-1.5">
-                <span className="text-primary font-semibold">read_directory()</span>
-                <Badge className="text-[9px] bg-emerald-500/25 border-emerald-500/20 text-emerald-400">SUCCESS</Badge>
-              </div>
-              <pre className="text-[9px] text-muted-foreground max-h-52 overflow-y-auto">
-{`{
-  "status": "success",
-  "files": [
-    "src/App.tsx",
-    "src/main.tsx",
-    "package.json"
-  ]
-}`}
-              </pre>
-            </div>
-          </div>
-        )
-      case "debugger":
-        return (
-          <div className="space-y-4">
-            <div className="p-3 bg-secondary/30 rounded-lg border border-border/50 font-mono text-xs">
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Performance Metrics</h4>
               <div className="space-y-1.5">
-                <div className="flex justify-between"><span>Kernel Jitter:</span> <span className="text-emerald-400">&lt; 1ms</span></div>
-                <div className="flex justify-between"><span>Socket Latency:</span> <span className="text-emerald-400">12ms</span></div>
-                <div className="flex justify-between"><span>Memory Garbage Coll:</span> <span className="text-foreground">0.05MB</span></div>
+                <p className="text-xs font-semibold text-foreground">No active context</p>
+                <p className="text-[11px] text-muted-foreground max-w-[210px] leading-relaxed">
+                  Context details and active capability status will appear here during conversations with Lisa.
+                </p>
               </div>
             </div>
-            <div className="p-3 bg-secondary/30 rounded-lg border border-border/50 font-mono text-xs">
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Active Heap</h4>
-              <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden mb-1">
-                <div className="h-full bg-primary rounded-full" style={{ width: "42%" }} />
+          )
+        }
+
+        return (
+          <div className="space-y-4 text-xs">
+            {/* Session Card */}
+            <div className="p-3.5 rounded-xl border border-border/60 bg-secondary/20 space-y-2">
+              <div className="flex items-center gap-2 text-foreground font-semibold">
+                <Bot className="h-4 w-4 text-primary shrink-0" />
+                <span className="truncate">{aiContext.sessionTitle || "Current Conversation"}</span>
               </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>Heap Allocated: 3.4MB</span>
-                <span>42% Capacity</span>
+              <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground pt-1 border-t border-border/40">
+                <span>Model:</span>
+                <span className="text-foreground font-medium">{aiContext.model || "Lisa Standard"}</span>
               </div>
+              <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                <span>Status:</span>
+                <span className={cn(
+                  "font-medium capitalize",
+                  aiContext.status === "thinking" ? "text-amber-400 animate-pulse" :
+                  aiContext.status === "streaming" ? "text-emerald-400" :
+                  "text-muted-foreground"
+                )}>
+                  {aiContext.status === "thinking" ? "Thinking..." :
+                   aiContext.status === "streaming" ? "Generating response..." :
+                   "Idle"}
+                </span>
+              </div>
+            </div>
+
+            {/* Active Attachment / Source */}
+            {aiContext.activeAttachment && (
+              <div className="p-3 rounded-xl border border-border/60 bg-secondary/20 space-y-1.5">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-primary" />
+                  <span>Referenced Document</span>
+                </div>
+                <p className="text-xs text-foreground font-medium truncate">{aiContext.activeAttachment}</p>
+              </div>
+            )}
+
+            {/* Capability Overview */}
+            <div className="p-3 rounded-xl border border-border/40 bg-secondary/10 space-y-1 text-muted-foreground leading-relaxed">
+              <p className="font-semibold text-foreground text-[11px]">Active Capabilities</p>
+              <p className="text-[10px]">
+                Lisa can reference your connected files, summarize emails, and retrieve information to assist your workflow.
+              </p>
+            </div>
+          </div>
+        )
+
+      case "email":
+        if (!emailContext) {
+          return (
+            <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground space-y-3">
+              <div className="p-3 rounded-full bg-secondary/50 border border-border/40">
+                <Mail className="h-6 w-6 text-primary/70" />
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-foreground">No active context</p>
+                <p className="text-[11px] text-muted-foreground max-w-[210px] leading-relaxed">
+                  Select an email from your inbox to inspect classification, priority, action items, and sender verification.
+                </p>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div className="space-y-4 text-xs">
+            {/* Email Header Overview */}
+            <div className="p-3.5 rounded-xl border border-border/60 bg-secondary/20 space-y-2">
+              <p className="font-semibold text-foreground truncate">{emailContext.subject || "(No Subject)"}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{emailContext.sender}</p>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                <span className="text-[11px] font-mono text-muted-foreground">Category</span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-secondary border border-border/50 uppercase">
+                  {emailContext.category || "Unclassified"}
+                </span>
+              </div>
+
+              {emailContext.priority_score !== null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-muted-foreground">Priority Score</span>
+                  <span className={cn(
+                    "text-[11px] font-mono font-bold px-2 py-0.5 rounded border",
+                    emailContext.priority_score >= 80 ? "bg-amber-500/10 text-amber-400 border-amber-500/30" :
+                    emailContext.priority_score >= 50 ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" :
+                    "bg-secondary text-muted-foreground border-border/50"
+                  )}>
+                    {emailContext.priority_score} / 100
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Sender Authentication Verification */}
+            <div className="p-3.5 rounded-xl border border-border/60 bg-secondary/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-semibold text-muted-foreground uppercase">Sender Security</span>
+                {emailContext.verification?.is_verified ? (
+                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3" /> Verified
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded border border-border/50 flex items-center gap-1">
+                    <ShieldAlert className="h-3 w-3" /> Unverified
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-1 pt-1 text-center font-mono text-[10px]">
+                <div className="p-1.5 rounded bg-secondary/40 border border-border/40">
+                  <div className="text-muted-foreground">SPF</div>
+                  <div className="font-bold text-foreground mt-0.5">{emailContext.verification?.spf_status || "N/A"}</div>
+                </div>
+                <div className="p-1.5 rounded bg-secondary/40 border border-border/40">
+                  <div className="text-muted-foreground">DKIM</div>
+                  <div className="font-bold text-foreground mt-0.5">{emailContext.verification?.dkim_status || "N/A"}</div>
+                </div>
+                <div className="p-1.5 rounded bg-secondary/40 border border-border/40">
+                  <div className="text-muted-foreground">DMARC</div>
+                  <div className="font-bold text-foreground mt-0.5">{emailContext.verification?.dmarc_status || "N/A"}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Items / Deadlines */}
+            <div className="p-3.5 rounded-xl border border-border/60 bg-secondary/20 space-y-2">
+              <div className="flex items-center gap-1.5 text-foreground font-semibold">
+                <ListTodo className="h-3.5 w-3.5 text-primary" />
+                <span>Action Items</span>
+              </div>
+              {emailContext.action_items && emailContext.action_items.length > 0 ? (
+                <ul className="space-y-1.5 pl-1">
+                  {emailContext.action_items.map((act, i) => (
+                    <li key={i} className="text-muted-foreground text-[11px] flex items-start gap-2">
+                      <span className="text-primary font-bold">•</span>
+                      <span>{act}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">No action required for this message.</p>
+              )}
+
+              {emailContext.deadline && (
+                <div className="pt-2 border-t border-border/40 text-[11px] font-mono text-muted-foreground">
+                  <span>Deadline: </span>
+                  <span className="text-amber-400 font-semibold">{emailContext.deadline}</span>
+                </div>
+              )}
             </div>
           </div>
         )
@@ -266,40 +239,38 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({ isOpen, onToggle
         animate={isOpen ? "open" : "closed"}
         variants={panelVariants}
         className={cn(
-          "h-full border-l border-border/80 bg-sidebar flex-col shrink-0 overflow-hidden relative select-none z-50",
+          "h-full border-l border-border/80 bg-sidebar flex flex-col shrink-0 overflow-hidden relative select-none z-50",
           isOverlay ? "absolute top-0 right-0 shadow-2xl h-full" : "relative"
         )}
       >
         {/* Panel Header */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-border/80 shrink-0">
           <div className="flex items-center gap-2">
-            <Terminal className="h-4 w-4 text-primary" />
-            <span className="font-bold text-sm tracking-tight">System Inspector</span>
+            <Info className="h-4 w-4 text-primary" />
+            <span className="font-bold text-sm tracking-tight">Inspector</span>
           </div>
           <Button
             onClick={onToggle}
             variant="ghost"
             size="icon-sm"
+            aria-label="Close inspector"
             className="hover:bg-secondary cursor-pointer text-muted-foreground hover:text-foreground"
           >
             <PanelRightClose className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Resize Handle (Mock visual indicator) */}
-        <div className="absolute top-0 left-0 w-px h-full bg-border/40 hover:bg-primary/50 cursor-ew-resize z-50 transition-colors" />
-
-        {/* Tab Switcher Grid */}
-        <div className="grid grid-cols-3 gap-1 p-2 bg-secondary/20 border-b border-border/50 shrink-0">
+        {/* Tab Switcher */}
+        <div className="grid grid-cols-2 gap-1 p-2 bg-secondary/20 border-b border-border/50 shrink-0">
           {tabs.map((tab) => {
             const TabIcon = tab.icon
             const isActive = activeTab === tab.id
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as TabType)}
+                onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex flex-col items-center justify-center p-1.5 rounded-md text-[9px] font-medium transition-all gap-1 cursor-pointer outline-none border relative select-none",
+                  "flex items-center justify-center p-2 rounded-md text-xs font-medium transition-all gap-1.5 cursor-pointer outline-none border relative select-none",
                   isActive
                     ? "text-primary-foreground font-semibold border-primary/50"
                     : "text-muted-foreground bg-transparent border-transparent hover:bg-secondary/40 hover:text-foreground"
@@ -327,10 +298,3 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({ isOpen, onToggle
     </>
   )
 }
-
-// Badge replacement inline helper for radices
-const Badge: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <span className={cn("px-1.5 py-0.5 rounded-full text-[9px] font-medium border uppercase tracking-wider font-mono", className)}>
-    {children}
-  </span>
-)

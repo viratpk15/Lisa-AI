@@ -2,5 +2,10 @@
   "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.12",
-  "extraPaths": ["."]
+  "extraPaths": ["."],
+  "include": ["app"],
+  "exclude": ["app/tests", "**/__pycache__", ".venv"],
+  "ignore": ["app/tests", "app/tests/**", "**/tests/**"],
+  "reportMissingImports": "none",
+  "reportMissingTypeStubs": false
 }

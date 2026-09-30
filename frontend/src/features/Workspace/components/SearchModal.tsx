@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Search, X, MessageSquare, ArrowRight } from "lucide-react"
+import { Search, X, MessageSquare, ArrowRight, ArrowLeft } from "lucide-react"
 import { searchConversationsApi } from "@/services/api/chat"
 import type { Conversation } from "@/types/api"
 
@@ -18,6 +18,19 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(false)
+
+  // Escape key handler to return to chat
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        onClose()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isOpen, onClose])
 
   // Real-time search execution with debouncing
   useEffect(() => {
@@ -46,15 +59,28 @@ export const SearchModal: React.FC<SearchModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/60 backdrop-blur-sm">
+      <div
+        onClick={onClose}
+        className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/60 backdrop-blur-sm cursor-pointer"
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: -10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -10 }}
-          className="w-full max-w-xl bg-background border border-border/80 rounded-xl shadow-2xl overflow-hidden flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-xl bg-background border border-border/80 rounded-xl shadow-2xl overflow-hidden flex flex-col cursor-default"
         >
           {/* Search Header */}
           <div className="flex items-center px-4 py-3 border-b border-border/60 gap-3">
+            <button
+              onClick={onClose}
+              className="p-1 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1 text-xs font-medium transition-colors"
+              title="Back to Assistant Chat"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Back</span>
+            </button>
+            <div className="h-4 w-px bg-border/60" />
             <Search className="h-4 w-4 text-muted-foreground shrink-0" />
             <input
               type="text"
@@ -68,11 +94,19 @@ export const SearchModal: React.FC<SearchModalProps> = ({
               <button
                 onClick={() => setQuery("")}
                 className="p-1 text-muted-foreground hover:text-foreground cursor-pointer"
+                title="Clear query"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
-            <kbd className="text-[10px] font-mono bg-secondary/40 px-1.5 py-0.5 rounded text-muted-foreground border border-border/40">ESC</kbd>
+            <button
+              onClick={onClose}
+              className="text-[10px] font-mono bg-secondary/50 hover:bg-secondary px-2 py-1 rounded text-muted-foreground hover:text-foreground border border-border/40 cursor-pointer flex items-center gap-1"
+              title="Close search (ESC)"
+            >
+              <span>ESC</span>
+              <X className="h-3 w-3" />
+            </button>
           </div>
 
           {/* Results List */}

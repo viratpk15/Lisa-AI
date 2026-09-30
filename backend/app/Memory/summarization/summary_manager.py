@@ -5,12 +5,9 @@ Manages conversation summarization, automatically generating summaries
 of older messages when conversations exceed configured thresholds.
 """
 
-from typing import TYPE_CHECKING
+from typing import Any
 
 from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage
-
-if TYPE_CHECKING:
-    from app.LLM.client import llm
 
 
 class SummaryManager:
@@ -30,7 +27,7 @@ class SummaryManager:
 
     def __init__(
         self,
-        llm: "llm",
+        llm: Any,
         threshold: int = 20,
         keep_recent: int = 10,
     ):

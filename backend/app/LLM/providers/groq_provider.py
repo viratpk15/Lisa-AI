@@ -10,6 +10,7 @@ import logging
 import os
 import time
 from typing import Any, Dict, Generator, List
+from pydantic import SecretStr
 from langchain_core.messages import BaseMessage, AIMessage
 from langchain_groq import ChatGroq
 
@@ -18,7 +19,6 @@ from app.LLM.base import (
     ProviderCapabilities,
     ProviderConfig,
     RecoverableLLMError,
-    UnrecoverableLLMError,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,15 +29,21 @@ class GroqProvider(BaseLLMProvider):
 
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
-        api_key = config.api_key or os.getenv("GROQ_API_KEY")
-        if not api_key:
-            logger.warning("[GROQ-DRIVER] GROQ_API_KEY is missing or empty.")
+        self.api_key = config.api_key or os.getenv("GROQ_API_KEY")
+        self.model_id = config.model_id or "llama-3.3-70b-versatile"
+        self._llm = None
 
-        self._llm = ChatGroq(
-            model=config.model_id or "llama-3.3-70b-versatile",
-            api_key=api_key,
-            request_timeout=config.timeout_seconds,
-        )
+        if not self.api_key:
+            logger.warning("[GROQ-DRIVER] GROQ_API_KEY is missing or empty.")
+        else:
+            try:
+                self._llm = ChatGroq(
+                    model=self.model_id,
+                    api_key=SecretStr(self.api_key),
+                )
+            except Exception as exc:
+                logger.warning("[GROQ-DRIVER] Initialization error: %s", exc)
+                self._llm = None
 
     @property
     def provider_name(self) -> str:
@@ -56,19 +62,19 @@ class GroqProvider(BaseLLMProvider):
         )
 
     def chat(self, messages: List[BaseMessage], **kwargs: Any) -> AIMessage:
-        if not self.config.api_key and not os.getenv("GROQ_API_KEY"):
+        if not self._llm or not self.api_key:
             raise RecoverableLLMError("Groq API Key missing or unconfigured.")
 
         try:
             return self._llm.invoke(messages, **kwargs)
         except Exception as exc:
             err_msg = str(exc).lower()
-            if any(k in err_msg for k in ["429", "rate limit", "quota", "timeout", "connection", "connect", "500", "503", "unavailable"]):
+            if any(k in err_msg for k in ["429", "rate limit", "quota", "timeout", "connection", "connect", "500", "503", "unavailable", "404", "model_not_found", "does not exist", "not found"]):
                 raise RecoverableLLMError(f"Groq Recoverable Infrastructure Error: {exc}") from exc
-            raise UnrecoverableLLMError(f"Groq Execution Error: {exc}") from exc
+            raise RecoverableLLMError(f"Groq Execution Error: {exc}") from exc
 
     def stream(self, messages: List[BaseMessage], **kwargs: Any) -> Generator[str, None, None]:
-        if not self.config.api_key and not os.getenv("GROQ_API_KEY"):
+        if not self._llm or not self.api_key:
             raise RecoverableLLMError("Groq API Key missing or unconfigured.")
 
         try:
@@ -80,17 +86,17 @@ class GroqProvider(BaseLLMProvider):
                     yield str(token)
         except Exception as exc:
             err_msg = str(exc).lower()
-            if any(k in err_msg for k in ["429", "rate limit", "quota", "timeout", "connection", "connect", "500", "503", "unavailable"]):
+            if any(k in err_msg for k in ["429", "rate limit", "quota", "timeout", "connection", "connect", "500", "503", "unavailable", "404", "model_not_found", "does not exist", "not found"]):
                 raise RecoverableLLMError(f"Groq Streaming Recoverable Error: {exc}") from exc
-            raise UnrecoverableLLMError(f"Groq Streaming Unrecoverable Error: {exc}") from exc
+            raise RecoverableLLMError(f"Groq Streaming Error: {exc}") from exc
 
     def health_check(self) -> Dict[str, Any]:
         start = time.time()
-        has_key = bool(self.config.api_key or os.getenv("GROQ_API_KEY"))
+        has_key = bool(self.api_key)
         return {
             "provider": "groq",
-            "model": self.config.model_id,
-            "is_healthy": has_key,
+            "model": self.model_id,
+            "is_healthy": has_key and self._llm is not None,
             "has_api_key": has_key,
             "latency_ms": round((time.time() - start) * 1000, 2),
         }

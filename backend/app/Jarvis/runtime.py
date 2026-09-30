@@ -12,7 +12,7 @@ import json
 import logging
 import time
 import uuid
-from typing import Generator
+from typing import Generator, Any, cast
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -55,14 +55,25 @@ def _clean_assistant_text(raw_text: str) -> str:
     return text
 
 
-def _get_runtime_context_message() -> SystemMessage:
-    """Generate dynamic system context including current date and time."""
+def _get_runtime_context_message(user_name: str | None = None) -> SystemMessage:
+    """Generate dynamic system context including current date, time, and active authenticated user."""
     now = datetime.now()
     formatted = now.strftime("%A, %B %d, %Y at %I:%M %p")
+    user_str = user_name.strip() if user_name and user_name.strip() else ""
+    user_line = f"Active Authenticated User: {user_str}\n" if user_str else ""
+    user_rule = (
+        f"User Identity: The user interacting with you is '{user_str}'. "
+        f"Address them by this username/name when greeting. If they ask 'Who am I?', state clearly that they are '{user_str}'. "
+        f"Do NOT call them Virat unless their authenticated username is explicitly virat.\n"
+        if user_str
+        else "User Identity: Active user username is not specified. Do NOT assume their name is Virat.\n"
+    )
     ctx_text = (
         f"--- RUNTIME ENVIRONMENT CONTEXT ---\n"
         f"Current System Date & Time: {formatted}\n"
-        f"Note: Use this temporal context ONLY when answering queries that specifically require temporal grounding.\n"
+        f"{user_line}"
+        f"{user_rule}"
+        f"Note: Use temporal context ONLY when answering queries that specifically require temporal grounding.\n"
         f"Do NOT mention date, time, system status, or disclaimers unless the user specifically asks for them.\n"
         f"-----------------------------------"
     )
@@ -323,9 +334,12 @@ def _evaluate_tool_and_rag_context(
         if any(kw in msg_lower for kw in ["date", "time", "clock", "today", "day of week"]):
             dt_tool = registry.get("datetime")
             if dt_tool:
-                res = dt_tool.execute()
+                res = dt_tool.execute(query=message)
                 if res:
                     context_lines.append(f"Current Date & Time Tool Output: {res}")
+                    context_lines.append(
+                        "DIRECTIVE: The user requested the current date/time. State it clearly and concisely using the verified tool output above."
+                    )
 
         # Math / Calculation
         if any(kw in msg_lower for kw in ["calculate", "math", "evaluate", "square root", "factorial", "equation"]) or (
@@ -337,6 +351,58 @@ def _evaluate_tool_and_rag_context(
                 res = calc_tool.execute(expression=expr)
                 if res:
                     context_lines.append(f"Calculator Tool Output: {res}")
+
+        # Travel Planner
+        if any(kw in msg_lower for kw in ["plan a trip", "plan trip", "travel to", "trip to", "flight from", "flights to", "itinerary for", "vacation in"]):
+            travel_tool = registry.get("travel_planner")
+            if travel_tool:
+                try:
+                    tool_res = travel_tool.execute(query=message)
+                    if tool_res and tool_res.get("summary"):
+                        context_lines.append(f"=== TRAVEL PLANNER SUBSYSTEM OUTPUT ===\n{tool_res['summary']}\n========================================")
+                        context_lines.append(
+                            "DIRECTIVE: The user asked for travel planning. Present the travel plan summary clearly, emphasizing flight categories (Cheapest, Fastest, Best Balance), accommodation highlights, and the link to the interactive travel planner."
+                        )
+                except Exception as t_err:
+                    logger.warning("[KNOWLEDGE-ROUTER] Travel planner tool execution error: %s", t_err)
+
+        # Jobs & Internships
+        if any(kw in msg_lower for kw in [
+            "find internship", "find internships", "find job", "find jobs", "search jobs",
+            "search internships", "ml internship", "ai internship", "software internship",
+            "remote internship", "jobs matching", "internships matching", "skills i'm missing",
+            "skills am i missing", "fits my skills"
+        ]):
+            jobs_tool = registry.get("jobs_finder")
+            if jobs_tool:
+                try:
+                    role_term = ""
+                    if "internship" in msg_lower:
+                        role_term = "Intern"
+                    elif "ai" in msg_lower or "ml" in msg_lower:
+                        role_term = "AI Engineer"
+                    elif "software" in msg_lower or "developer" in msg_lower:
+                        role_term = "Software Engineer"
+
+                    loc_term = ""
+                    if "bangalore" in msg_lower:
+                        loc_term = "Bangalore"
+                    elif "remote" in msg_lower:
+                        loc_term = "Remote"
+
+                    tool_res = jobs_tool.execute(
+                        role=role_term,
+                        location=loc_term,
+                        is_remote=True if "remote" in msg_lower else None,
+                        employment_type="internship" if "intern" in msg_lower else "any",
+                    )
+                    if tool_res and tool_res.get("summary"):
+                        context_lines.append(f"=== JOBS & INTERNSHIPS SUBSYSTEM OUTPUT ===\n{tool_res['summary']}\n===========================================")
+                        context_lines.append(
+                            "DIRECTIVE: The user asked about jobs or internships. Present the verified opportunities clearly with company names, locations, and direct application links. Remind the user they can explore and track them on the Jobs & Internships page."
+                        )
+                except Exception as j_err:
+                    logger.warning("[KNOWLEDGE-ROUTER] Jobs finder tool execution error: %s", j_err)
 
         # Python / Code execution
         if any(kw in msg_lower for kw in ["python", "run code", "execute code", "script"]):
@@ -502,6 +568,7 @@ class Jarvis:
         self,
         session_id: str,
         message: str,
+        user_name: str | None = None,
     ) -> str:
         # Wrap the entire request in a trace. The trace is optional and
         # never affects execution: failures inside tracing are swallowed.
@@ -510,9 +577,10 @@ class Jarvis:
             message[:_MAX_TRACED_REQUEST_LENGTH],
         ):
             result = graph.invoke(
-                {
+                cast(Any, {
                     "session_id": session_id,
                     "message": message,
+                    "user_name": user_name or "user",
                     "action": {},
                     "observation": {},
                     "response": "",
@@ -526,7 +594,7 @@ class Jarvis:
                     "consecutive_failures": 0,
                     "step_execution_history": [],
                     "termination_reason": None,
-                }
+                })
             )
 
         raw_resp = result.get("response", "")
@@ -539,6 +607,7 @@ class Jarvis:
         attachment_ids: list[str] | None = None,
         active_document_id: str | None = None,
         active_filename: str | None = None,
+        user_name: str | None = None,
     ) -> Generator[str, None, None]:
         """Stream chat tokens in real-time using provider-independent LLMClient and structured SSE."""
         start_time = measure_time()
@@ -550,7 +619,8 @@ class Jarvis:
             message[:_MAX_TRACED_REQUEST_LENGTH],
         ):
             # 1. Emit thinking event immediately
-            yield _format_sse("thinking", {"status": "Thinking..."})
+            active_model = getattr(llm_client, "last_active_model", "Groq · llama-3.1-8b-instant")
+            yield _format_sse("thinking", {"status": "Thinking...", "model": active_model})
 
             # 2. Memory & semantic retrieval
             memory = memory_manager.get_conversation(session_id)
@@ -577,7 +647,7 @@ class Jarvis:
             # 3. Assemble system and context messages
             messages: list = [
                 SystemMessage(content=CONVERSATION_PROMPT),
-                _get_runtime_context_message(),
+                _get_runtime_context_message(user_name=user_name),
             ]
             messages.extend(memory.messages)
 
@@ -636,9 +706,10 @@ class Jarvis:
                     latency_ms=calculate_duration(start_time),
                 )
 
-                # 6. Emit done event with clean assistant text
-                yield _format_sse("done", {"response": full_response})
-                logger.info("[%s] END session=%s", req_id, session_id)
+                # 6. Emit done event with clean assistant text and active model
+                active_model = getattr(llm_client, "last_active_model", "Groq · llama-3.1-8b-instant")
+                yield _format_sse("done", {"response": full_response, "model": active_model})
+                logger.info("[%s] END session=%s model='%s'", req_id, session_id, active_model)
 
             except Exception as exc:
                 logger.error("[%s] Inference exception during streaming for session %s: %s", req_id, session_id, str(exc))

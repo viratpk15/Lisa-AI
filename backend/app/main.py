@@ -28,6 +28,7 @@ from app.FastAPI.routes_models import router as models_router
 from app.FastAPI.routes_workflows import router as workflows_router
 from app.FastAPI.routes_deployments import router as deployments_router
 from app.FastAPI.routes_files import router as files_router
+from app.FastAPI.routes_email_oauth import router as email_oauth_router
 from app.Config.settings import APP_VERSION, CORS_ORIGINS
 from app.FastAPI.rate_limiter import limiter
 
@@ -211,3 +212,22 @@ app.include_router(deployments_router)
 
 # File Attachment Upload endpoints
 app.include_router(files_router)
+app.include_router(files_router, prefix="/api/v1")
+
+# Email OAuth & Connection endpoints
+app.include_router(email_oauth_router)
+
+# Email Intelligence endpoints
+from app.FastAPI.routes_email import router as email_router
+app.include_router(email_router)
+
+# Travel Planner endpoints
+from app.FastAPI.routes_travel import router as travel_router
+app.include_router(travel_router)
+app.include_router(travel_router, prefix="/api/v1")
+
+# Jobs & Internship Finder endpoints
+from app.FastAPI.routes_jobs import router as jobs_router
+app.include_router(jobs_router)
+app.include_router(jobs_router, prefix="/api/v1")
+

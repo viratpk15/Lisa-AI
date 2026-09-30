@@ -72,7 +72,7 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
         """Lazy load the embedding model."""
         if self._model is None:
             try:
-                from sentence_transformers import SentenceTransformer
+                from sentence_transformers import SentenceTransformer  # type: ignore
                 self._model = SentenceTransformer(self.model_name)
                 # Update dimension based on actual model
                 self._dimension = self._model.get_sentence_embedding_dimension()
@@ -92,6 +92,8 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
             Embedding vector as list of floats.
         """
         self._load_model()
+        if self._model is None:
+            raise RuntimeError("Model failed to load")
 
         # Generate embedding
         embedding = self._model.encode(text, convert_to_numpy=False)

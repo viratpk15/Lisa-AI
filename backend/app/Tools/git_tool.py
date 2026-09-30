@@ -59,7 +59,7 @@ class GitTool(Tool):
         )
         super().__init__(metadata=meta)
 
-    def execute(self, action: str, args: str = "", **kwargs: Any) -> Dict[str, Any]:
+    def execute(self, action: str = "status", args: str = "", *args_list: Any, **kwargs: Any) -> Dict[str, Any]:
         """
         Execute git subcommand synchronously.
         """

@@ -154,7 +154,9 @@ class RAGManager:
         retrieval_plan = AdaptiveRetrievalPlanner.create_plan(intent, query, doc_type=doc_type, total_chunks_in_doc=len(records))
 
         import re
-        q_tokens = [re.sub(r"[^\w]", "", t.lower()) for t in query.split() if len(re.sub(r"[^\w]", "", t.lower())) > 1]
+        raw_tokens = [t.lower().strip("?,!.:;\"'") for t in query.split() if len(t.strip("?,!.:;\"'")) > 1]
+        word_tokens = [w.lower() for w in re.findall(r"\w+", query) if len(w) > 1]
+        q_tokens = list(dict.fromkeys(raw_tokens + word_tokens))
         ql = query.lower()
 
         # ── SLIDE QUERY NORMALIZATION ──────────────────────────────────────────

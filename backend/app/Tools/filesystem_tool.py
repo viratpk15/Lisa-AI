@@ -83,7 +83,7 @@ class FilesystemTool(Tool):
 
         return target
 
-    def execute(self, action: str, path: str = "", content: Optional[str] = None, **kwargs: Any) -> Dict[str, Any]:
+    def execute(self, action: str = "exists", path: str = "", content: Optional[str] = None, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """
         Synchronously execute filesystem operations.
         """
@@ -93,7 +93,7 @@ class FilesystemTool(Tool):
         if action_lower == "exists":
             return {
                 "action": "exists",
-                "path": str(path),
+                "path": path,
                 "exists": target_path.exists(),
                 "is_file": target_path.is_file(),
                 "is_dir": target_path.is_dir(),
@@ -114,7 +114,7 @@ class FilesystemTool(Tool):
                     "is_dir": child.is_dir(),
                     "size_bytes": child.stat().st_size if child.is_file() else 0,
                 })
-            return {"action": "list", "path": str(path), "items": items}
+            return {"action": "list", "path": path, "items": items}
 
         elif action_lower == "read":
             if not target_path.exists():
@@ -133,7 +133,7 @@ class FilesystemTool(Tool):
 
             return {
                 "action": "read",
-                "path": str(path),
+                "path": path,
                 "content": data,
                 "size_bytes": size,
             }
@@ -154,7 +154,7 @@ class FilesystemTool(Tool):
 
             return {
                 "action": "write",
-                "path": str(path),
+                "path": path,
                 "bytes_written": content_bytes,
                 "status": "success",
             }
@@ -163,7 +163,7 @@ class FilesystemTool(Tool):
             target_path.mkdir(parents=True, exist_ok=True)
             return {
                 "action": "mkdir",
-                "path": str(path),
+                "path": path,
                 "status": "success",
             }
 
@@ -181,7 +181,7 @@ class FilesystemTool(Tool):
 
             return {
                 "action": "delete",
-                "path": str(path),
+                "path": path,
                 "status": "success",
             }
 

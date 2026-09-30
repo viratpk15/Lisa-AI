@@ -26,12 +26,25 @@ class RetrievedMemory:
         timestamp: ISO format timestamp of when the message was created.
         frequency: Number of times similar content appears in the session.
         importance: Importance score (0-1) based on content heuristics.
+        recency: Recency score (0-1) based on age.
+        final_score: Composite multi-factor score.
     """
     message: BaseMessage
     similarity: float
     timestamp: str
-    frequency: int = 1
+    frequency: float = 1.0
     importance: float = 0.0
+    recency: float = 0.0
+    final_score: float = 0.0
+
+
+def _get_text_content(msg: BaseMessage) -> str:
+    content = msg.content
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, list):
+        return " ".join(str(part) for part in content)
+    return str(content)
 
 
 # Ranking weight constants
@@ -146,7 +159,7 @@ class MemoryRanker:
         unique: list[RetrievedMemory] = []
 
         for memory in candidates:
-            content = memory.message.content.strip()
+            content = _get_text_content(memory.message).strip()
             if content not in seen_content:
                 seen_content.add(content)
                 unique.append(memory)
@@ -165,14 +178,14 @@ class MemoryRanker:
         # Count content occurrences
         content_counts: Counter = Counter()
         for memory in candidates:
-            content = memory.message.content.strip().lower()
+            content = _get_text_content(memory.message).strip().lower()
             content_counts[content] += 1
 
         # Normalize frequency scores (0-1)
         if content_counts:
             max_count = max(content_counts.values())
             for memory in candidates:
-                content = memory.message.content.strip().lower()
+                content = _get_text_content(memory.message).strip().lower()
                 count = content_counts[content]
                 memory.frequency = count / max_count if max_count > 0 else 0.0
 
@@ -214,7 +227,7 @@ class MemoryRanker:
         }
 
         for memory in candidates:
-            content_lower = memory.message.content.strip().lower()
+            content_lower = _get_text_content(memory.message).strip().lower()
 
             # Count keyword matches
             keyword_count = sum(1 for keyword in importance_keywords if keyword in content_lower)

@@ -5,6 +5,7 @@ import { DollarSign, Calculator } from "lucide-react"
 import { useModelStudioStore } from "../../store/useModelStudioStore"
 import { useModelRegistryQuery, estimateCostApi } from "../../services/modelsApi"
 import type { CostEstimate } from "../../types/models.types"
+import { isAllowedProvider } from "../../utils/allowedProviders"
 
 export function CostCalculatorPanel() {
   const selectedModelId = useModelStudioStore((s) => s.selectedModelId)
@@ -17,6 +18,7 @@ export function CostCalculatorPanel() {
   const setMonthlyRequests = useModelStudioStore((s) => s.setCostMonthlyRequests)
 
   const { data: models = [] } = useModelRegistryQuery()
+  const visibleModels = models.filter((m) => isAllowedProvider({ provider_name: m.provider_name, display_name: m.display_name }))
   const [costResult, setCostResult] = useState<CostEstimate | null>(null)
 
   const handleCalculate = async () => {
@@ -56,7 +58,7 @@ export function CostCalculatorPanel() {
             onChange={(e) => setSelectedModelId(e.target.value)}
             className="w-full p-2 bg-secondary/30 border border-border/40 rounded text-foreground text-xs"
           >
-            {models.map((m) => (
+            {visibleModels.map((m) => (
               <option key={m.id} value={m.model_id}>{m.display_name}</option>
             ))}
           </select>

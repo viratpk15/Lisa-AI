@@ -155,3 +155,38 @@ def test_live_tool_registry_dispatch(monkeypatch):
     assert res_weather.success is True
     assert res_weather.verified is True
     assert res_weather.payload["temperature_celsius"] == 26.5
+
+
+def test_datetime_tool_timezone_queries():
+    """Verify DateTimeTool supports city-based timezone lookup and local datetime."""
+    from app.Tools.datetime_tool import DateTimeTool
+
+    dt_tool = DateTimeTool()
+
+    # Tokyo timezone query
+    tokyo_res = dt_tool.execute(query="What is the current time in Tokyo?")
+    assert "Tokyo" in tokyo_res
+    assert "Asia/Tokyo" in tokyo_res
+
+    # London timezone query
+    london_res = dt_tool.execute(query="What is the time in London?")
+    assert "London" in london_res
+    assert "Europe/London" in london_res
+
+    # Default query returns valid timestamp
+    default_res = dt_tool.execute()
+    assert len(default_res) >= 19
+
+
+def test_recency_queries_intent_routing():
+    """Verify QueryIntentClassifier routes temporal, news, and product queries correctly."""
+    from app.Jarvis.intent_router import QueryIntent, QueryIntentClassifier
+
+    assert QueryIntentClassifier.classify("What is the current time in Tokyo?") == QueryIntent.TOOL
+    assert QueryIntentClassifier.classify("What is the latest NVIDIA news?") == QueryIntent.LIVE_SEARCH
+    assert QueryIntentClassifier.classify("What is the current Bitcoin price?") == QueryIntent.LIVE_SEARCH
+    assert QueryIntentClassifier.classify("What is the current silver price?") == QueryIntent.LIVE_SEARCH
+    assert QueryIntentClassifier.classify("What is the weather in Bengaluru?") == QueryIntent.LIVE_SEARCH
+    assert QueryIntentClassifier.classify("What is the latest iPhone?") == QueryIntent.LIVE_SEARCH
+    assert QueryIntentClassifier.classify("What is the latest MacBook?") == QueryIntent.LIVE_SEARCH
+

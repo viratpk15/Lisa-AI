@@ -128,7 +128,10 @@ class WorkflowManager:
             description=description,
             definition_json=def_json,
         )
-        return self.get_workflow(db, wf.workflow_id)
+        return self.get_workflow(db, wf.workflow_id) or {}
+
+    def delete_workflow(self, db: Session, workflow_id: str) -> bool:
+        return repository.delete_workflow(db, workflow_id)
 
     def compile_workflow(self, db: Session, workflow_id: str) -> Dict[str, Any]:
         wf = repository.get_workflow_by_id(db, workflow_id)

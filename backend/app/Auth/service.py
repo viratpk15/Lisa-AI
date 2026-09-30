@@ -93,6 +93,38 @@ class AuthService:
             return User(id=user["id"], email=user["email"])
         return None
 
+    def change_password(self, user_id: int, current_password: str, new_password: str) -> bool:
+        """Change user password after verifying current credentials."""
+        user = self.db.get_user_by_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+
+        user_with_hash = self.db.get_user_by_email(user["email"])
+        if not user_with_hash or not verify_password(current_password, user_with_hash["password_hash"]):
+            raise ValueError("Current password is incorrect")
+
+        if len(new_password) < 8:
+            raise ValueError("New password must be at least 8 characters long")
+
+        new_hash = hash_password(new_password)
+        success = self.db.update_user_password(user_id, new_hash)
+        logger.info("Password updated successfully for user id=%s", user_id)
+        return success
+
+    def delete_account(self, user_id: int, password: str) -> bool:
+        """Permanently delete user account after password verification."""
+        user = self.db.get_user_by_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+
+        user_with_hash = self.db.get_user_by_email(user["email"])
+        if not user_with_hash or not verify_password(password, user_with_hash["password_hash"]):
+            raise ValueError("Incorrect password. Account deletion aborted.")
+
+        success = self.db.delete_user(user_id)
+        logger.warning("Account permanently deleted for user id=%s email=%s", user_id, user["email"])
+        return success
+
 
 # Global service instance
 auth_service = AuthService()

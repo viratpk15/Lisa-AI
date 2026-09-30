@@ -31,7 +31,7 @@ class AdaptiveRetrievalPlanner:
 
     @classmethod
     def create_plan(
-        self,
+        cls,
         intent: DocumentIntent,
         query: str,
         document_type: str = "notes",

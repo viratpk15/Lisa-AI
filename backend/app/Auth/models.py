@@ -74,3 +74,24 @@ class TokenPayload(BaseModel):
     user_id: int
     email: str
     exp: int | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    """Request schema for password changes."""
+
+    current_password: str = Field(description="Current account password")
+    new_password: PasswordField = Field(description="New password (8-128 characters, trimmed)")
+
+
+class DeleteAccountRequest(BaseModel):
+    """Request schema for account deletion confirmation."""
+
+    password: str = Field(description="Account password confirmation to authorize deletion")
+
+
+class AuthSuccessMessage(BaseModel):
+    """Standard success message schema for account mutations."""
+
+    success: bool = True
+    message: str
+

@@ -291,6 +291,30 @@ class RAGRepository:
                 )
 
             ds = db.query(DatasetModel).filter_by(id=dataset_id).first()
+            if not ds:
+                kb = db.query(KnowledgeBaseModel).first()
+                if not kb:
+                    kb = KnowledgeBaseModel(
+                        id="kb_enterprise_01",
+                        name="Enterprise Architecture KB",
+                        description="Production documentation and architectural constitutional rules.",
+                        embedding_provider="local",
+                        embedding_model="text-embedding-3-small",
+                        dimensions=1536,
+                        vector_version=1,
+                        created_at=datetime.now(timezone.utc).isoformat(),
+                    )
+                    db.add(kb)
+                    db.flush()
+                ds = DatasetModel(
+                    id=dataset_id,
+                    kb_id=kb.id,
+                    name="Core Architecture Docs",
+                    document_count=0,
+                    created_at=datetime.now(timezone.utc).isoformat(),
+                )
+                db.add(ds)
+                db.flush()
             kb = db.query(KnowledgeBaseModel).filter_by(id=ds.kb_id).first() if ds else None
 
             provider_name = kb.embedding_provider if kb else "local"

@@ -51,7 +51,7 @@ class BrowserTool(Tool):
         )
         super().__init__(metadata=meta)
 
-    def execute(self, action: str, url: str, **kwargs: Any) -> Dict[str, Any]:
+    def execute(self, action: str = "navigate", url: str = "", *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """
         Execute browser action. Returns graceful unconfigured response if driver environment is missing.
         """

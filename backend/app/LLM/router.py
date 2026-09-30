@@ -13,11 +13,9 @@ import time
 from typing import Any, Dict, Generator, List
 from langchain_core.messages import BaseMessage, AIMessage
 
-from app.Data.database import SessionLocal
 from app.LLM.base import (
     ProviderConfig,
     RecoverableLLMError,
-    UnrecoverableLLMError,
 )
 from app.LLM.factory import ProviderFactory
 from app.Observability.manager import observability_manager
@@ -25,61 +23,84 @@ from app.Observability.manager import observability_manager
 logger = logging.getLogger(__name__)
 
 
+def is_production_env() -> bool:
+    """Determine if running under production environment."""
+    env = (os.getenv("ENVIRONMENT") or os.getenv("APP_ENV") or "development").strip().lower()
+    return env in ("production", "prod")
+
+
+def format_provider_model(provider_name: str, model_id: str) -> str:
+    """Format provider and model into a concise, readable badge string."""
+    name_map = {
+        "groq": "Groq",
+        "nvidia": "NVIDIA",
+        "mistral": "Mistral",
+        "ollama": "Ollama",
+        "openai": "OpenAI",
+        "anthropic": "Anthropic",
+        "google": "Google",
+    }
+    p_name = name_map.get(provider_name.lower(), provider_name.capitalize())
+    return f"{p_name} · {model_id}"
+
+
 class LLMRouter:
     """Stateless LLM Router managing provider resolution, retries, and failover chains."""
 
+    def __init__(self) -> None:
+        groq_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+        self.last_active_model: str = format_provider_model("groq", groq_model)
+
     def resolve_provider_chain(self) -> List[ProviderConfig]:
-        """Dynamically build provider chain ordered by Model Studio routing_priority."""
-        configs: List[ProviderConfig] = []
+        """Dynamically build provider chain according to locked LLM policy:
+        Development: Groq -> NVIDIA NIM -> Mistral -> Ollama (LOCAL ONLY)
+        Production:  Groq -> NVIDIA NIM -> Mistral (Ollama strictly excluded)
+        """
+        is_prod = is_production_env()
 
-        try:
-            with SessionLocal() as db:
-                from app.Models import repository as model_repo
-                active_models = model_repo.list_models(db)
-                providers_map = {p.id: p for p in model_repo.list_providers(db)}
+        configs: List[ProviderConfig] = [
+            ProviderConfig(
+                provider_name="groq",
+                model_id=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
+                display_name="Groq (Primary)",
+                api_key=os.getenv("GROQ_API_KEY"),
+                base_url=os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
+            ),
+            ProviderConfig(
+                provider_name="nvidia",
+                model_id=os.getenv("NVIDIA_MODEL", os.getenv("NVIDIA_NIM_MODEL", "meta/llama-3.3-70b-instruct")),
+                display_name="NVIDIA NIM (Fallback 1)",
+                api_key=os.getenv("NVIDIA_API_KEY") or os.getenv("NVIDIA_NIM_API_KEY"),
+                base_url=os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1"),
+            ),
+            ProviderConfig(
+                provider_name="mistral",
+                model_id=os.getenv("MISTRAL_MODEL", "mistral-large-latest"),
+                display_name="Mistral AI (Fallback 2)",
+                api_key=os.getenv("MISTRAL_API_KEY"),
+                base_url=os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1"),
+            ),
+        ]
 
-                # Filter active models and sort by routing_priority
-                sorted_models = sorted([m for m in active_models if m.is_active], key=lambda x: x.routing_priority)
-                for m in sorted_models:
-                    p = providers_map.get(m.provider_id)
-                    p_name = p.provider_name if p else "groq"
-                    api_key = model_repo.decrypt_api_key(p.encrypted_api_key) if (p and p.encrypted_api_key) else None
-                    base_url = p.api_base_url if p else None
-
-                    configs.append(
-                        ProviderConfig(
-                            provider_name=p_name,
-                            model_id=m.model_id,
-                            display_name=m.display_name,
-                            api_key=api_key or os.getenv("GROQ_API_KEY"),
-                            base_url=base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-                        )
-                    )
-        except Exception as exc:
-            logger.warning("[LLM-ROUTER] Model Studio DB resolution fallback triggered: %s", exc)
-
-        if not configs:
-            # Standard default fallback chain: Groq (P1) -> Ollama (P2)
-            configs = [
-                ProviderConfig(
-                    provider_name="groq",
-                    model_id="llama-3.3-70b-versatile",
-                    display_name="Groq Llama 3.3 70B (Primary)",
-                    api_key=os.getenv("GROQ_API_KEY"),
-                ),
+        # Ollama is strictly local development only — NEVER allow in production
+        if not is_prod:
+            configs.append(
                 ProviderConfig(
                     provider_name="ollama",
-                    model_id="qwen2.5:3b",
-                    display_name="Ollama Qwen 2.5 3B (Offline Failover)",
+                    model_id=os.getenv("OLLAMA_MODEL", "qwen2.5:3b"),
+                    display_name="Ollama Local (Dev Fallback)",
                     base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-                ),
-            ]
+                )
+            )
 
         return configs
 
     def invoke(self, messages: List[BaseMessage], **kwargs: Any) -> AIMessage:
         """Synchronously execute chat completion across dynamic provider failover chain."""
         chain = self.resolve_provider_chain()
+        if not chain:
+            raise RecoverableLLMError("No LLM providers configured or available in failover chain.")
+
         start_time = time.time()
         attempt_count = 0
         last_error = None
@@ -93,6 +114,7 @@ class LLMRouter:
                 )
                 provider = ProviderFactory.create_provider(config)
                 response = provider.chat(messages, **kwargs)
+                self.last_active_model = format_provider_model(config.provider_name, config.model_id)
 
                 total_latency = round((time.time() - start_time) * 1000, 2)
                 logger.info(
@@ -113,12 +135,13 @@ class LLMRouter:
                     config.provider_name, config.model_id, exc
                 )
                 continue
-            except UnrecoverableLLMError as exc:
-                logger.error(
-                    "[LLM-ROUTER] UNRECOVERABLE FAILURE on Provider='%s' model='%s': %s | Aborting failover.",
+            except Exception as exc:
+                last_error = str(exc)
+                logger.warning(
+                    "[LLM-ROUTER] PRE-TOKEN FAILURE on Provider='%s' model='%s': %s | Triggering failover...",
                     config.provider_name, config.model_id, exc
                 )
-                raise exc
+                continue
 
         raise RecoverableLLMError(
             f"All LLM providers in failover chain exhausted ({attempt_count} attempts). Last Error: {last_error}"
@@ -127,6 +150,9 @@ class LLMRouter:
     def stream(self, messages: List[BaseMessage], **kwargs: Any) -> Generator[str, None, None]:
         """Stream token strings with pre-token failover and mid-stream safety protection."""
         chain = self.resolve_provider_chain()
+        if not chain:
+            raise RecoverableLLMError("No LLM providers configured or available in failover chain.")
+
         start_time = time.time()
         attempt_count = 0
         last_error = None
@@ -143,6 +169,7 @@ class LLMRouter:
 
                 for token in provider.stream(messages, **kwargs):
                     has_emitted_token = True
+                    self.last_active_model = format_provider_model(config.provider_name, config.model_id)
                     yield token
 
                 total_latency = round((time.time() - start_time) * 1000, 2)
@@ -156,7 +183,7 @@ class LLMRouter:
                 )
                 return
 
-            except RecoverableLLMError as exc:
+            except Exception as exc:
                 last_error = str(exc)
                 if has_emitted_token:
                     # MID-STREAM SAFETY: Never splice output from another provider if tokens were already emitted!
@@ -164,20 +191,14 @@ class LLMRouter:
                         "[LLM-ROUTER-STREAM] MID-STREAM FAILURE on Provider='%s': %s | Splicing prevented. Aborting.",
                         config.provider_name, exc
                     )
-                    raise exc
+                    raise
                 else:
                     # PRE-TOKEN FAILURE: Pre-token failover allowed
                     logger.warning(
-                        "[LLM-ROUTER-STREAM] PRE-TOKEN RECOVERABLE FAILURE on Provider='%s': %s | Triggering failover...",
+                        "[LLM-ROUTER-STREAM] PRE-TOKEN FAILURE on Provider='%s': %s | Triggering failover...",
                         config.provider_name, exc
                     )
                     continue
-            except UnrecoverableLLMError as exc:
-                logger.error(
-                    "[LLM-ROUTER-STREAM] UNRECOVERABLE STREAM FAILURE on Provider='%s': %s",
-                    config.provider_name, exc
-                )
-                raise exc
 
         raise RecoverableLLMError(
             f"All LLM providers in stream failover chain exhausted ({attempt_count} attempts). Last Error: {last_error}"
